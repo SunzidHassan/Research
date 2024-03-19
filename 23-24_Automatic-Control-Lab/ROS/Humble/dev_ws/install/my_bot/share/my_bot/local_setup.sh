@@ -1,0 +1,1 @@
+/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot/ament_cmake_environment_hooks/local_setup.sh
