@@ -1,5 +1,6 @@
 /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/config/empty.yaml
 /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/description/robot.urdf.xacro
+/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/description/robot_core.xacro
 /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/launch/rsp.launch.py
 /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/worlds/empty.world
 /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/ament_index/resource_index/package_run_dependencies/my_bot
