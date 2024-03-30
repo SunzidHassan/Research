@@ -1,9 +1,0 @@
-/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot/CMakeFiles/uninstall.dir
-/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot/CMakeFiles/my_bot_uninstall.dir
-/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot/CMakeFiles/test.dir
-/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot/CMakeFiles/edit_cache.dir
-/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot/CMakeFiles/rebuild_cache.dir
-/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot/CMakeFiles/list_install_components.dir
-/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot/CMakeFiles/install.dir
-/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot/CMakeFiles/install/local.dir
-/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot/CMakeFiles/install/strip.dir
