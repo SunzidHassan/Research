@@ -1,0 +1,51 @@
+[0.016s] Invoking command in '/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/src/my_bot -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot
+[0.146s] -- The C compiler identification is GNU 11.4.0
+[0.236s] -- The CXX compiler identification is GNU 11.4.0
+[0.246s] -- Detecting C compiler ABI info
+[0.330s] -- Detecting C compiler ABI info - done
+[0.336s] -- Check for working C compiler: /usr/bin/cc - skipped
+[0.336s] -- Detecting C compile features
+[0.337s] -- Detecting C compile features - done
+[0.340s] -- Detecting CXX compiler ABI info
+[0.457s] -- Detecting CXX compiler ABI info - done
+[0.464s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[0.465s] -- Detecting CXX compile features
+[0.465s] -- Detecting CXX compile features - done
+[0.470s] -- Found ament_cmake: 1.3.8 (/opt/ros/humble/share/ament_cmake/cmake)
+[0.685s] -- Found Python3: /usr/local/python/current/bin/python3 (found version "3.10.12") found components: Interpreter 
+[0.757s] -- Override CMake install command with custom implementation using symlinks instead of copying resources
+[0.805s] -- Found ament_lint_auto: 0.12.10 (/opt/ros/humble/share/ament_lint_auto/cmake)
+[0.897s] -- Added test 'copyright' to check source files copyright and LICENSE
+[0.906s] -- Added test 'flake8' to check Python code syntax and style conventions
+[0.907s] -- Added test 'lint_cmake' to check CMake code style
+[0.909s] -- Added test 'pep257' to check Python code against some of the docstring style conventions in PEP 257
+[0.914s] -- Added test 'xmllint' to check XML markup files
+[0.916s] -- Configuring done
+[0.920s] -- Generating done
+[0.921s] -- Build files have been written to: /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot
+[0.926s] Invoked command in '/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/src/my_bot -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot
+[0.928s] Invoking command in '/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot -- -j16 -l16
+[0.969s] Invoked command in '/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot -- -j16 -l16
+[1.012s] Invoking command in '/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot
+[1.020s] -- Install configuration: ""
+[1.021s] -- Execute custom install script
+[1.021s] -- Symlinking: /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/config/empty.yaml
+[1.031s] -- Symlinking: /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/description/robot.urdf.xacro
+[1.042s] -- Symlinking: /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/launch/rsp.launch.py
+[1.052s] -- Symlinking: /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/worlds/empty.world
+[1.063s] -- Symlinking: /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/ament_index/resource_index/package_run_dependencies/my_bot
+[1.076s] -- Symlinking: /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/ament_index/resource_index/parent_prefix_path/my_bot
+[1.086s] -- Symlinking: /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/environment/ament_prefix_path.sh
+[1.096s] -- Symlinking: /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/environment/ament_prefix_path.dsv
+[1.106s] -- Symlinking: /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/environment/path.sh
+[1.119s] -- Symlinking: /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/environment/path.dsv
+[1.129s] -- Symlinking: /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/local_setup.bash
+[1.140s] -- Symlinking: /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/local_setup.sh
+[1.150s] -- Symlinking: /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/local_setup.zsh
+[1.161s] -- Symlinking: /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/local_setup.dsv
+[1.172s] -- Symlinking: /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/package.dsv
+[1.183s] -- Symlinking: /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/ament_index/resource_index/packages/my_bot
+[1.203s] -- Symlinking: /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/cmake/my_botConfig.cmake
+[1.215s] -- Symlinking: /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/cmake/my_botConfig-version.cmake
+[1.227s] -- Symlinking: /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/install/my_bot/share/my_bot/package.xml
+[1.241s] Invoked command in '/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot

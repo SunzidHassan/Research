@@ -1,0 +1,4 @@
+Invoking command in '/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot -- -j16 -l16
+Invoked command in '/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot -- -j16 -l16
+Invoking command in '/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot
+Invoked command in '/Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /Research/23-24_Automatic-Control-Lab/ROS/Humble/dev_ws/build/my_bot
