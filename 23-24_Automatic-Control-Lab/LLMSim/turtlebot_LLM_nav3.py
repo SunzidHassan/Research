@@ -27,11 +27,11 @@ import matplotlib.pyplot as plt
 # image data processing
 import cv2 as cv
 
+from openai import OpenAI
+api_key=''
 
-# computer vision model
-from VisionModel.source_finding_model_v_7 import visionDetection
-directory = '/home/lw-lab/catkin_ws/src/my_robot_controller/scripts/VisionModel'
-os.chdir(directory)
+import base64
+import requests
 
 #Date time
 import datetime
@@ -39,40 +39,15 @@ import datetime
 """
 Parameter Initializations
 """
-# olfaction_prompt = input('Deactivate olfaction sensing? [Y/n]: ')
-# if olfaction_prompt == 'Y' or olfaction_prompt == 'y':
-#     olfaction_model = False
-
-# vision_prompt = input('Deactivate vision sensing? [Y/n]: ')
-# if vision_prompt == 'Y' or vision_prompt == 'y':
-#     vision_model = False
             
 # chemical sensor threshold
-chmThr = 600
+chmThr = 400
 
 # chmThr = 100
 
 # trajectory
 path_x = []
 path_y = []
-
-# search area range
-x_min = None
-y_min = None
-x_max = None
-y_max = None
-
-classes_to_filter = None
-opt2  = {
-
-    "weights": "/home/lw-lab/catkin_ws/src/my_robot_controller/scripts/VisionModel/model-weight/best.pt", # Path to weights file default weights are for nano model
-    "yaml"   : "/home/lw-lab/catkin_ws/src/my_robot_controller/scripts/VisionModel/data-yml/data.yaml",
-    "img-size": 640, # default image size
-    "conf-thres": 0.1, # confidence threshold for inference.
-    "iou-thres" : 0.45, # NMS IoU threshold for inference.
-    "device" : '0',  # device to run our model i.e. 0 or 0,1,2,3 or cpu
-    "classes" : classes_to_filter  # list of classes to filter or None
-}
 
 
 """
@@ -86,8 +61,13 @@ class Server:
         # self.source_position_y = float(input('Enter Goal y-Position: '))
         self.source_position_x = 3.2
         self.source_position_y = 1.4
-        self.dist_threshold = 0.7 # Todo: reduce the distance threshold after vision-laser fusion.
+        self.dist_threshold = 0.8 # Todo: reduce the distance threshold after vision-laser fusion.
         self.dist = 0.0
+
+        # Laser scan range threshold
+        self.laserAngleThr0 = 0.75
+        self.laserAngleThr2 = 0.5
+        self.laserAngleThr3 = 0.3
 
         # Sensor variables
         self.chemical = 0.0
@@ -101,41 +81,20 @@ class Server:
         # laser variables
         self.laserAngleFront_0, self.laserAngleSLeft_15, self.laserAngleLeft_60, self.laserAngleBack_120, self.laserAngleRight_180, self.laserAngleSRight_225 = 0, 15, 60, 120, 180, 225
 
-        # Laser scan range threshold
-        self.laserAngleThr0 = 1.0
-        self.laserAngleThr2 = 0.75
-        self.laserAngleThr3 = 0.5
-
         self.obstacle_boolFront = True
         self.obstacle_boolSlightRgtLft = True
         self.obstacle_boolRgtLft = True
+        self.obstacleBool = False
 
         self.targetHeading = True
         self.loop = 0
 
-        ## Odom positional variables
-        # self.xPosition = 0.0
-        # self.yPosition = 0.0
-        # self.zOrientation = None
-        # self.wOrientation = None
-
         # Vision variables
-        self.imageWidth = 640
         self.sequence = None
         self.imgDecode = None
 
-        self.vizObjx = None
-        self.vizObjy = None
-        self.vizObjw = None
-        self.vizObjh = None
-
-        self.preVizObjx = None
-        self.preVizObjy = None
-        self.preVizObjw = None
-        self.preVizObjh = None
-
         # Behavior variables
-        self.behavior_switch = 'Out'
+        self.behavior_switch = 'switch_to_out'
         self.Sign = 1
         self.findDir = 0
 
@@ -147,8 +106,8 @@ class Server:
         self.time = 0.0
 
         # chemical plume detection
-        self.detection_flag = 0             # 0 for non-detection, 1 for detection
-        self.pre_chem = 0.0
+        # self.detection_flag = 0             # 0 for non-detection, 1 for detection
+        # self.pre_chem = 0.0
 
         # dnn parameters
         self.ux = 0.0
@@ -160,6 +119,7 @@ class Server:
         # save data into lists
         self.path_x = []
         self.path_y = []
+        self.actionIDRecord = []
         self.ux_list = []
         self.uy_list = []
         self.vx_list = []
@@ -172,30 +132,14 @@ class Server:
 
         # Move parameter
         self.move = 0.0
-
-        # Laser parameter
-        self.laserAngleFront_0 = 0
-        self.laserAngleSLeft_15 = 15
-        self.laserAngleSLeft_30 = 30
-        self.laserAngleLeft_60 = 60
-        self.laserAngleBack_120 = 120
-        self.laserAngleRight_180 = 180
-        self.laserAngleSRight_210 = 210
-        self.laserAngleSRight_225 = 225
+        self.actionID = 5
 
     def imageCapture(self, imageInput):
         image = np.asarray(bytearray(imageInput.data), dtype="uint8")
-        self.imgDecode = cv.imdecode(image, cv.IMREAD_COLOR)
+        self.imgDecode = base64.b64encode(image).decode('utf-8')
         self.sequence = imageInput.header.seq
-        self.visualObjectDetection()
 
-    
-    def visualObjectDetection(self):
-        # pass
-        if self.sequence % 30 == 0:
-            self.vizObjx, self.vizObjy, self.vizObjw, self.vizObjh = visionDetection(opt = opt2, imageInput=self.imgDecode, plot_indicator=True)
-            self.preVizObjx, self.preVizObjy, self.preVizObjw, self.preVizObjh = self.vizObjx, self.vizObjy, self.vizObjw, self.vizObjh
-        
+        self.LLMNav()
 
     def sensorCallback(self, msg):
         # self.chemical = 0
@@ -206,14 +150,6 @@ class Server:
        
     def laserCallback(self, msg):
         self.laser = msg
-
-
-    # def positionCallback(self, msg):
-    #     self.xPosition = msg.pose.pose.position.x
-    #     self.yPosition = msg.pose.pose.position.y
-    #     self.zOrientation = msg.pose.pose.orientation.z
-    #     self.wOrientation = msg.pose.pose.orientation.w
-    #     self.navigate()
 
 
     def tflistener(self, listener):
@@ -227,11 +163,7 @@ class Server:
             self.zOrientation = self.rot[2]
             self.wOrientation = self.rot[3]
             self.sensorConversion()
-
-    # def gasDispersionModel(self):
-    #     pass
-
-    
+ 
     def sensorConversion(self):
         # convert quarternion to Euler degree
         Rot = Rotation.from_quat([0, 0, self.zOrientation, self.wOrientation])
@@ -255,82 +187,119 @@ class Server:
         # self.globalWindDir = 0
 
         self.globalWindBlowDir = self.globalWindDir + 180
-
-
         self.setSensorFlag()
 
 
+    def LLM4o(self):
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
+        }
+
+        payload = {
+            "model": "gpt-4o",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": self.robot_prompt
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{self.imgDecode}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "max_tokens": 300
+        }
+        response = int(requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload).json()['choices'][0]['message']['content'])
+        return response
+        
 
 
-    # check the current robot behaviors
+    def LLMNav(self):
+        if (self.sequence < 10) or (self.sequence % 180 == 0):
+            cv.imwrite(f'/home/lw-lab/LLMSim/{self.xPosition}_{self.yPosition}_{self.chemical}_vision.png', self.imgDecode)
+            self.robot_prompt = f"""
+            Task: Determine the best direction for a mobile robot to move towards an odor source.
+
+            The given image is the robot's front view.
+            Action Selection Instruction 1: If there is an vapor emitting object in the image, it is likely the odor source. If the likely odor source is in the center of the image, the robot should move forward to approach it. (Action = 1).
+            Action Selection Instruction 2: If there is an vapor emitting object in the image, it is likely the odor source. If the likely odor source is in the right part of the image, the robot should move right to approach it. (Action = 2)
+            Action Selection Instruction 3: If there is an vapor emitting object in the image, it is likely the odor source. If the likely odor source is in the left part of the image, the robot should move left to approach it. (Action = 3)
+            Action Selection Instruction 4: If there is no object that can emit vapor in the image, and if "current odor concentration" is High, then move upwind to approach the odor source. (Action = 4)
+            Action Selection Instruction 5: If there is no object that can emit vapor in the image, and if "current odor concentration" is Low, move crosswind. (Action = 5)
+
+            Output Instruction 1: If there is a vapor-emitting object in the image, selection one of the actions 1, 2 or 3.
+            Output Instruction 2: If there is no vapor emiting object in the image, select one of the actions 4 or 5 based on "current odor concentration" value.
+            Output Instruction 3: Respond with the corresponding numerical value of the action (1, 2, 3, 4, or 5) without any additional text or punctuation.
+
+            Input data: "current odor concentration" is High: {self.chemical > chmThr}.
+
+            Your answer is: """
+            self.actionID = self.LLM4o()
+
     def check_behavior(self, behavior_switch):
         # default behavior is zigzag
         behavior = 'Out'
         if behavior_switch == 'switch_to_obstacleAvoid':
             behavior = 'ObstacleAvoidance'
-        elif behavior_switch == 'switch_to_visionNav':
-            behavior = 'Vision'
-        # if behavior_switch == 'switch_to_zigzag':
-        #     behavior = 'Find'
+        elif behavior_switch == 'switch_to_vision_front':
+            behavior = 'Vision_front'
+        elif behavior_switch == 'switch_to_vision_right':
+            behavior = 'Vision_right'
+        elif behavior_switch == 'switch_to_vision_left':
+            behavior = 'Vision_left'
         elif behavior_switch == 'switch_to_in':
             behavior = 'In'
         elif behavior_switch == 'switch_to_out':
             behavior = 'Out'
-
         return behavior
 
 
     def pid_heading(self, target_heading, current_heading):
         kp = 0.03
-
         error = current_heading - target_heading
-
         if error < -180:
             error += 360
         if error > 180:
             error -= 360
-
         pid_output = kp * error
-
         if pid_output > 0.3:
             pid_output = 0.3
-
         if pid_output < -0.3:
             pid_output = -0.3
-
         return -pid_output
     
-    def obstacleDetection(self):
+
+    def setSensorFlag(self):
+        self.laserAngleFront_0, self.laserAngleSLeft_15, self.laserAngleSLeft_30, self.laserAngleLeft_60, self.laserAngleBack_120, self.laserAngleRight_180, self.laserAngleSRight_210, self.laserAngleSRight_225 = 0, 15, 30, 60, 120, 180, 210, 225
+
         self.obstacle_boolFront = self.laser.ranges[self.laserAngleFront_0] < self.laserAngleThr0
         self.obstacle_boolSlightRgtLft = (self.laser.ranges[self.laserAngleSLeft_15] < self.laserAngleThr0) or (self.laser.ranges[self.laserAngleSRight_225] < self.laserAngleThr0)
         self.obstacle_boolHalfRgtLft = (self.laser.ranges[self.laserAngleSLeft_30] < self.laserAngleThr2) or (self.laser.ranges[self.laserAngleSRight_210] < self.laserAngleThr2)
         self.obstacle_boolRgtLft = (self.laser.ranges[self.laserAngleLeft_60] < self.laserAngleThr3) or (self.laser.ranges[self.laserAngleRight_180] < self.laserAngleThr3)
+        # self.obstacle_boolSlightRgtLft = (0.01 < self.laser.ranges[self.laserAngleSLeft_15] < self.laserAngleThr2) or (0.01 < self.laser.ranges[self.laserAngleSRight_225] < self.laserAngleThr2)
+        # self.obstacle_boolRgtLft = (0.01 < self.laser.ranges[self.laserAngleLeft_60] < self.laserAngleThr3) or (0.01 < self.laser.ranges[self.laserAngleRight_180] < self.laserAngleThr3)
 
+        self.obstacleBool = self.obstacle_boolFront or self.obstacle_boolSlightRgtLft or self.obstacle_boolHalfRgtLft or self.obstacle_boolRgtLft
+        # if laser obstacle detected
+        if self.obstacleBool: self.detection_flag = 'obstacle_detected'
 
-    def setSensorFlag(self):
-        if self.obstacle_boolFront or self.obstacle_boolSlightRgtLft or self.obstacle_boolHalfRgtLft or self.obstacle_boolRgtLft:
-            self.detection_flag = 'obstacle_detected'
-        # determine whether the robot detects plume source object in vision
-        elif self.preVizObjx is not None:
-            self.detection_flag = 'vision_detected'
+        # determine whether the robot detects obstacle or plume source object in vision
+        elif self.actionID == 1: self.detection_flag = 'vision_detected_front'
+        elif self.actionID == 2: self.detection_flag = 'vision_detected_right'
+        elif self.actionID == 3: self.detection_flag = 'vision_detected_left'
+
         # if object is not detected in vision, trace plume
-        else:
-            # determine whether the robot detects chemical plumes
-            if self.chemical < chmThr:
-                self.detection_flag = 'chemical_not_detected'
-            # if current plume concentration is greater than previous reading
-            else:
-                if self.chemical > self.pre_chem:
-                    self.detection_flag = 'chemical_detected'
-                else:
-                    self.detection_flag = 'chemical_detected'     # Should be 'chemical_not_detected'
-                    # self.detection_flag = 'chemical_not_detected'
+        elif self.actionID == 4: self.detection_flag = 'chemical_detected'
+        elif self.actionID == 5: self.detection_flag = 'chemical_not_detected'
 
-            self.pre_chem = self.chemical
-
-            # update non-detection time if plume not detected
-            if self.detection_flag == 'chemical_not_detected':
-                self.plume_non_detection += 0.02
         self.navigate()
 
 
@@ -341,49 +310,24 @@ class Server:
         # determine the current behaviors
         behavior = self.check_behavior(behavior_switch=self.behavior_switch)
 
-        # zigzag behavior (behavior_switch = 0)
-        if behavior == 'Find':
-            if self.detection_flag == 'chemical_not_detected':
-                if self.yPosition > y_max or self.yPosition < y_min:
-                    if self.yPosition > 0:
-                        self.Sign = -1
-                    else:
-                        self.Sign = 1
-
-                # determine whether the robot moves toward the downwind area
-                if self.xPosition < x_min:
-                    self.findDir = 0     # downwind
-                if self.xPosition > x_max:
-                    self.findDir = 1     # upwind
-
-                if self.findDir == 1:
-                    self.target_heading = 0 + self.Sign * 110
-                if self.findDir == 0:
-                    self.target_heading = 0 + self.Sign * 70
-            # change to obstacle avoidance, vision or in behavior
-            elif self.detection_flag == 'obstacle_detected':
-                self.behavior_switch = 'switch_to_obstacleAvoid'
-            elif self.detection_flag == 'vision_detected':
-                self.behavior_switch = 'switch_to_visionNav'
-            elif self.detection_flag == 'chemical_detected':
-                self.behavior_switch = 'switch_to_in'
-
-
-        # track-in behavior (behavior_switch = 1)
+        # track-in behavior
         if behavior == 'In':
             self.targetHeading = True
-            # move against wind direction
             if self.detection_flag == 'chemical_detected':
                 self.target_heading = self.globalWindDir
             elif self.detection_flag == 'obstacle_detected':
                 self.behavior_switch = 'switch_to_obstacleAvoid'
-            elif self.detection_flag == 'vision_detected':
-                self.behavior_switch = 'switch_to_visionNav'
+            elif self.detection_flag == 'vision_detected_front':
+                self.behavior_switch = 'switch_to_vision_front'
+            elif self.detection_flag == 'vision_detected_right':
+                self.behavior_switch = 'switch_to_vision_right'
+            elif self.detection_flag == 'vision_detected_left':
+                self.behavior_switch = 'switch_to_vision_left'
             elif self.detection_flag == 'chemical_not_detected':
                 self.behavior_switch = 'switch_to_out'
 
 
-        # track-out behavior (behavior_switch = 2)
+        # track-out behavior
         if behavior == 'Out':
             self.targetHeading = True
             # move across wind direction
@@ -391,30 +335,69 @@ class Server:
                 self.target_heading = self.globalWindDir + 90
             elif self.detection_flag == 'obstacle_detected':
                 self.behavior_switch = 'switch_to_obstacleAvoid'
-            elif self.detection_flag == 'vision_detected':
-                self.behavior_switch = 'switch_to_visionNav'
+            elif self.detection_flag == 'vision_detected_front':
+                self.behavior_switch = 'switch_to_vision_front'
+            elif self.detection_flag == 'vision_detected_right':
+                self.behavior_switch = 'switch_to_vision_right'
+            elif self.detection_flag == 'vision_detected_left':
+                self.behavior_switch = 'switch_to_vision_left'
             elif self.detection_flag == 'chemical_detected':
                 self.behavior_switch = 'switch_to_in'
 
-        # vision-led behavior (behavior_switch = 3)
-        if behavior == 'Vision':
+
+        # vision-led behavior
+        if behavior == 'Vision_front':
             self.targetHeading = False
-            if self.preVizObjx is not None:
-                self.move.linear.x = 0.1
-                # if object is in the left of the image, move right, and vice versa
-                if float(self.preVizObjx) < self.imageWidth/2:
-                    self.move.angular.z = 0.1
-                else:
-                    self.move.angular.z = -0.1
+            if self.detection_flag == 'vision_detected_front':
+                self.move.linear.x = 0.08
+                self.move.angular.z = 0.0
             if self.detection_flag == 'obstacle_detected':
                 self.behavior_switch = 'switch_to_obstacleAvoid'
+            elif self.detection_flag == 'vision_detected_right':
+                self.behavior_switch = 'switch_to_vision_right'
+            elif self.detection_flag == 'vision_detected_left':
+                self.behavior_switch = 'switch_to_vision_left'
+            elif self.detection_flag == 'chemical_not_detected':
+                self.behavior_switch = 'switch_to_out'
+            elif self.detection_flag == 'chemical_detected':
+                self.behavior_switch = 'switch_to_in'
+
+
+        # vision-led behavior
+        if behavior == 'Vision_right':
+            self.targetHeading = False
+            if self.detection_flag == 'vision_detected_right':
+                self.move.linear.x = 0.08
+                self.move.angular.z = 0.03
+            if self.detection_flag == 'obstacle_detected':
+                self.behavior_switch = 'switch_to_obstacleAvoid'
+            elif self.detection_flag == 'vision_detected_front':
+                self.behavior_switch = 'switch_to_vision_front'
+            elif self.detection_flag == 'vision_detected_left':
+                self.behavior_switch = 'switch_to_vision_left'
+            elif self.detection_flag == 'chemical_not_detected':
+                self.behavior_switch = 'switch_to_out'
+            elif self.detection_flag == 'chemical_detected':
+                self.behavior_switch = 'switch_to_in'
+
+        # vision-led behavior
+        if behavior == 'Vision_left':
+            if self.detection_flag == 'vision_detected_left':
+                self.targetHeading = False
+                self.move.linear.x = 0.08
+                self.move.angular.z = -0.03
+            elif self.detection_flag == 'obstacle_detected':
+                self.behavior_switch = 'switch_to_obstacleAvoid'
+            elif self.detection_flag == 'vision_detected_front':
+                self.behavior_switch = 'switch_to_vision_front'
+            elif self.detection_flag == 'vision_detected_right':
+                self.behavior_switch = 'switch_to_vision_right'
             elif self.detection_flag == 'chemical_detected':
                 self.behavior_switch = 'switch_to_in'
             elif self.detection_flag == 'chemical_not_detected':
                 self.behavior_switch = 'switch_to_out'
 
-        # obstacle avoidance behavior
-
+        # obstacle-avoid behavior
         if behavior == 'ObstacleAvoidance':
             if self.detection_flag == 'obstacle_detected':
                 thr1 = 0.8 # Laser scan range threshold
@@ -454,8 +437,7 @@ class Server:
                         self.loop = 5
                         self.target_heading = self.globalWindDir - 90
                 # obstacle in both sligtly left and right and front
-                else:                    
-                    # if space in slight left is greater than slight right
+                else:
                     if self.laser.ranges[25] > self.laser.ranges[215]:
                         self.targetHeading = False
                         self.move.linear.x = 0.0
@@ -479,10 +461,13 @@ class Server:
                             self.move.angular.z = 0.0
                             self.loop = 9
                             self.target_heading = self.globalWindDir - 90
-                    
-                
-            elif self.detection_flag == 'vision_detected':
-                self.behavior_switch = 'switch_to_visionNav'
+
+            elif self.detection_flag == 'vision_detected_front':
+                self.behavior_switch = 'switch_to_visionNav_front'
+            elif self.detection_flag == 'vision_detected_right':
+                self.behavior_switch = 'switch_to_visionNav_right'
+            elif self.detection_flag == 'vision_detected_left':
+                self.behavior_switch = 'switch_to_visionNav_left'
             elif self.detection_flag == 'chemical_detected':
                 self.behavior_switch = 'switch_to_in'
             elif self.detection_flag == 'chemical_not_detected':
@@ -495,7 +480,7 @@ class Server:
             if self.target_heading < -180:
                 self.target_heading += 360
             self.move.angular.z = self.pid_heading(target_heading=self.target_heading, current_heading=self.rotEulerDegree)
-            self.move.linear.x = 0.1
+            self.move.linear.x = 0.08
 
         pub.publish(self.move) # publish the move object
         self.printInfo()
@@ -508,7 +493,7 @@ class Server:
         print('Laser reading in front: {}, front threshold{}'.format(self.laser.ranges[self.laserAngleFront_0], self.laserAngleThr0))
         print('Laser reading slight Left: {}, slight Right: {}, threshold: {}'.format(round(self.laser.ranges[self.laserAngleSLeft_15],1), round(self.laser.ranges[self.laserAngleSRight_225],1), self.laserAngleThr2))
         print('Laser reading Left: {}, Right: {}, threshold: {}'.format(round(self.laser.ranges[self.laserAngleLeft_60],1), round(self.laser.ranges[self.laserAngleRight_180],1), self.laserAngleThr3))
-        print('Obstacle bool front: {}, slight right-left: {}, right-left: {}, obstacle condition: {}'.format(self.obstacle_boolFront, self.obstacle_boolSlightRgtLft, self.obstacle_boolRgtLft, self.obstacle_boolFront or self.obstacle_boolSlightRgtLft or self.obstacle_boolRgtLft))
+        print('Obstacle bool front: {}, slight right-left: {}, right-left: {}, obstacle condition: {}'.format(self.obstacle_boolFront, self.obstacle_boolSlightRgtLft, self.obstacle_boolRgtLft, self.obstacleBool))
         print('Obstacle loop: {}'.format(self.loop))
         print('**')
         print('Time: {}'.format(self.time))
@@ -524,66 +509,17 @@ class Server:
         print('Global Airflow Direction: {} degrees'.format(round(self.globalWindDir, 1)))
         #print('Avg Global Airflow Direction: {} degrees'.format(self.AvgGlobalWindDir))
         print('**')
-        print('PID Output: {}'.format(round(self.move.angular.z, 1)))
+        print('Current Action: {}'.format(self.actionID))
+        print('Current Detection Flag: {}'.format(self.detection_flag))
+        print('Current Behavior Switch: {}'.format(self.behavior_switch))
+        print('Current Behavior: {}'.format(behavior))
         print('Target Heading: {}'.format(round(self.target_heading, 1)))
         print('Current Heading: {}'.format(round(self.rotEulerDegree, 1)))
         print('Current linear speed: {}'.format(self.move.linear.x))
         print('Current angualr speed: {}'.format(self.move.angular.z))
         print('**')
-        print('Current Behavior: {}'.format(behavior))
-        print('Detection flag: {}'.format(self.detection_flag))
         print('Distance to the Source: {}'.format(round(self.dist, 1)))
-        print('**')
-        print('X value of detected object: {}'.format(self.preVizObjx))
-        print(float(self.preVizObjx) < self.imageWidth/2 if self.preVizObjx is not None else 'False')
-
         print('-------------------------------------------')
-        # self.tracePath()
-        self.sensorPromptSwitch()
-
-    def sensorPromptSwitch(self):
-        # Goal prompt
-        self.goal_prompt = "reach the humidifier"
-
-        # Obstacle prompt or LDS translation
-        self.obstacle_Front_detection_flag = ""
-        self.obstacle_Rgt_detection_flag = ""
-        self.obstacle_Lft_detection_flag = ""
-        self.obstacle_Back_detection_flag = ""
-
-        self.obstacle_boolSlightRgtLft = (self.laser.ranges[self.laserAngleSLeft_15] < self.laserAngleThr0) or (self.laser.ranges[self.laserAngleSRight_225] < self.laserAngleThr0)
-        self.obstacle_boolHalfRgtLft = (self.laser.ranges[self.laserAngleSLeft_30] < self.laserAngleThr2) or (self.laser.ranges[self.laserAngleSRight_210] < self.laserAngleThr2)
-        self.obstacle_boolRgtLft = (self.laser.ranges[self.laserAngleLeft_60] < self.laserAngleThr3) or (self.laser.ranges[self.laserAngleRight_180] < self.laserAngleThr3)
-
-        if self.laser.ranges[self.laserAngleFront_0] < self.laserAngleThr0: self.obstacle_Front_detection_flag = "front"
-        if self.laser.ranges[self.laserAngleLeft_60] < self.laserAngleThr3: self.obstacle_Rgt_detection_flag = "left"
-        if self.laser.ranges[self.laserAngleRight_180] < self.laserAngleThr3: self.obstacle_Lft_detection_flag= "left"
-        if self.laser.ranges[240]: self.obstacle_Back_detection_flag = "back"
-        
-        # Chemical prompt or MQ3 translation
-        self.chemical_detection_flag = "not detected"
-        if self.chemical < chmThr: self.chemical_detection_flag = "detected"
-        
-        # Wind direction prompt
-        self.globalWindBlowDir_detection_flag = ""
-        
-        if self.globalWindBlowDir > 135 or self.globalWindBlowDir < -135: self.globalWindBlowDir_detection_flag = "back"
-        elif self.globalWindBlowDir < -45: self.globalWindBlowDir_detection_flag = "right"
-        elif self.globalWindBlowDir > 45: self.globalWindBlowDir_detection_flag = "left"
-        elif self.globalWindBlowDir > -45 or self.globalWindBlowDir < 45: self.globalWindBlowDir_detection_flag = "front"
-        
-        ## Wind speed prompt
-        # self.wind_speed_flag = 0
-        # if self.airFlow > 0.1: self.wind_speed_flag = 1
-        self.printPrompt()
-
-    def printPrompt(self):
-        print("How to {}. ".format(self.goal_prompt),
-              
-              "Where, there is obstacle in {}, {}, {}, {}. ".format(self.obstacle_Front_detection_flag, self.obstacle_Rgt_detection_flag,
-                                               self.obstacle_Lft_detection_flag, self.obstacle_Back_detection_flag),
-              "And, chemical is: {}. ".format(self.chemical_detection_flag),
-              "And, wind is blowing from: {}. ".format(self.globalWindBlowDir_detection_flag))
         self.tracePath()
 
 
@@ -591,52 +527,40 @@ class Server:
         if self.time >= (1/self.timeRate):   # time interval depends on rospy.rate
             
             # record parameters
-            # self.ux = self.airFlow * math.cos(self.globalWindBlowDir * math.pi / 180)
-            # self.uy = self.airFlow * math.sin(self.globalWindBlowDir * math.pi / 180)
-
-            # self.vx = math.cos(self.rotEulerDegree * math.pi / 180)
-            # self.vy = math.sin(self.rotEulerDegree * math.pi / 180)
-            
-            self.time_list.append(self.time)
+            self.time_list.append(round(self.time, 4))
             self.path_x.append(self.xPosition)
             self.path_y.append(self.yPosition)
-            # self.ux_list.append(self.ux)
-            # self.uy_list.append(self.uy)
-            # self.vx_list.append(self.vx)
-            # self.vy_list.append(self.vy)
-            # self.plume_non_detection_list.append(self.plume_non_detection)
-            # self.detection_flag_list.append(self.detection_flag)
-            # self.behavior_switch_list.append(self.behavior_switch)
+            # self.chemRecord.append(self.chemical)
+            # self.windBlowDirRecord.append(self.globalWindBlowDir)
+            # self.airFlowRecord.append(self.airFlow)
             self.behavior_list.append(self.check_behavior(behavior_switch=self.behavior_switch))
+            self.actionIDRecord.append(self.actionID)
 
-            self.save_data()
-
-            # TO-DO: add plot
-
+            self.saveData()
 
         # update the running time
-        self.time += (1/30)       # time interval depends on rospy.rate
+        self.time += (1/self.timeRate)       # time interval depends on rospy.rate
+        rate = rospy.Rate(self.timeRate)
+        rate.sleep()
 
-    def save_data(self):
+
+    def saveData(self):
         month = datetime.datetime.now().month
         day = datetime.datetime.now().day
         hour = datetime.datetime.now().hour
         minute = datetime.datetime.now().minute
 
         self.dist = math.sqrt((self.xPosition - self.source_position_x)**2 + (self.yPosition - self.source_position_y)**2)
-        if self.dist < self.dist_threshold or self.time > 200:
+        if self.dist < self.dist_threshold or self.time > 120:
             savePrompt = input('Save the path? [Y/n]: ')
             if savePrompt == 'Y' or savePrompt == 'y':
-                data = {'time': self.time_list, 'x': self.path_x, 'y': self.path_y, 'behavior': self.behavior_list}
-                # data = {'time': self.time_list, 'x': self.path_x, 'y': self.path_y, 'ux': self.ux_list, 'uy': self.uy_list, 'vx': self.vx_list, 
-                #         'vy': self.vy_list, 'pnd': self.plume_non_detection_list}       
+                data = {'time': self.time_list, 'x': self.path_x, 'y': self.path_y, 'behavior': self.behavior_list, 'action': self.actionIDRecord}
                 df = pd.DataFrame(data)
                 print('Save csv File...')
-                df.to_csv(f'/home/lw-lab/catkin_ws/src/my_robot_controller/scripts/moth_inspired_record/moth_inspired-X_{self.source_position_x}-Y_{self.source_position_y}-Mn_{month}-Dy_{day}-Hr_{hour}-Mt_{minute}.csv', index=False)
+                df.to_csv(f'/home/lw-lab/LLMSim/Mn_{month}-Dy_{day}-Hr_{hour}-Mt_{minute}.csv', index=False)
                 sys.exit(0)
             else:
                 sys.exit(0)
-
 
 
 def main():
