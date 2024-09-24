@@ -1,0 +1,35 @@
+%DO NOT CHANGE IT.
+
+\newpage
+
+
+% lists of figures and tables
+\addcontentsline{toc}{chapter}{LIST OF TABLES}
+\begin{singlespace}
+
+%%%\singlespacing
+% This configures the space before the title
+\renewcommand{\cftbeforelottitleskip}{.6in}%{\SpaceBeforeChapter}
+% this configures the space after the title
+\renewcommand{\cftafterlottitleskip}{1em}
+% This makes the title LIST OF TABLES, centered in bfseries
+\renewcommand{\listtablename}{LIST OF TABLES}
+\renewcommand{\cftlottitlefont}{\hfill\large\bfseries}
+\renewcommand{\cftafterlottitle}{\hfill}
+
+\setlength{\cftparskip}{1.0\baselineskip}%{1.6667\baselineskip}
+\renewcommand{\cfttabpresnum}{Table~}
+% This will correct the indent so the above added text doesn't distort it
+
+\newlength{\mylenTable}
+\settowidth{\mylenTable}{\cfttabpresnum\cfttabaftersnum}
+%\addtolength{\cftfignumwidth}{\mylenFigure}
+\hyphenpenalty=100000
+
+%% This makes it double space between entries, but single space is turned on already, so it will single space wrapped entries
+%\setlength{\cftparskip}{1.0\baselineskip}%{1.6667\baselineskip}
+\listoftables
+\end{singlespace}
+
+
+

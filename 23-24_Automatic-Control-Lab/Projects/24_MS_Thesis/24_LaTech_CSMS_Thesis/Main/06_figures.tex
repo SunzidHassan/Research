@@ -1,0 +1,36 @@
+%DO NOT CHANGE IT.
+
+
+\newpage
+\addcontentsline{toc}{chapter}{LIST OF FIGURES}
+% This causes single spacing for entries that wrap
+\begin{singlespace}
+% This configures the space before the title
+\renewcommand{\cftbeforeloftitleskip}{.6in}%{\SpaceBeforeChapter}
+% this configures the space after the title
+\renewcommand{\cftafterloftitleskip}{1em}
+% This makes the title LIST OF FIGURES, centered in Large bfseries
+\renewcommand{\listfigurename}{LIST OF FIGURES}
+\renewcommand{\cftloftitlefont}{\hfill\large\bfseries}
+\renewcommand{\cftafterloftitle}{\hfill}
+% This cause double spacing between entries, single spacing with line wraps
+\setlength{\cftparskip}{1.0\baselineskip}%{1.6667\baselineskip}
+\renewcommand{\cftfigpresnum}{Figure~}
+% This will correct the indent so the above added text doesn't distort it
+\newlength{\mylenFigure}
+\settowidth{\mylenFigure}{\cftfigpresnum\cftfigaftersnum}
+%\addtolength{\cftfignumwidth}{\mylenFigure}
+\hyphenpenalty=100000
+\listoffigures
+% Turn double spacing back on
+\end{singlespace}
+\hyphenpenalty=1000
+%\doublespacing
+%\renewcommand{\baselinestretch}{2.0}
+\newpage
+
+
+
+
+
+

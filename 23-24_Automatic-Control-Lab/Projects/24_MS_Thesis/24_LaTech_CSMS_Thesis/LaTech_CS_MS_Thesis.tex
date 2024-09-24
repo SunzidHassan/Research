@@ -1,0 +1,518 @@
+\documentclass[12pt]{report}
+
+%This is the main thesis file. Even though the chapter contents are saved in other files, you must always TeXify %from the main file.
+
+\usepackage{amsmath,amsthm,amssymb}
+\usepackage{setspace}
+\usepackage[mathscr]{eucal}
+\usepackage{wrapfig}
+\usepackage{graphicx}
+\usepackage{psfrag}
+\usepackage{ifthen}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{fancyvrb}
+\usepackage{fancyhdr}
+\usepackage{color}
+\usepackage{sectsty}
+\usepackage[calcwidth]{titlesec}
+\usepackage{tocloft}
+\usepackage{float}
+\usepackage{indentfirst,microtype}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{subfigure}
+\usepackage{comment}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{pdfpages}
+% \usepackage{lineomath}
+\usepackage[labelfont=bf]{caption} %For bold label for figures and tables (for indented captions, use the "hang" option.
+
+\AtBeginDocument{\setlength\abovedisplayskip{3pt}}
+\AtBeginDocument{\setlength\belowdisplayskip{3pt}}
+
+\renewcommand{\cfttoctitlefont}{\large\bfseries}
+\renewcommand{\cftloftitlefont}{\large\bfseries}
+\renewcommand{\cftlottitlefont}{\large\bfseries}
+
+%\setlength{\cftbeforetoctitleskip}{42pt}
+%\setlength{\cftaftertoctitleskip}{12pt}
+\setlength{\cftbeforeloftitleskip}{42pt}
+\setlength{\cftafterloftitleskip}{12pt}
+\setlength{\cftbeforepartskip}{0pt}
+\setlength{\cftbeforechapskip}{0pt}
+\setlength{\cftbeforesecskip}{0pt}
+\setlength{\cftbeforesubsecskip}{0pt}
+\newcommand*{\noaddvspace}{\renewcommand*{\addvspace}[1]{}}
+\addtocontents{lof}{\protect\noaddvspace}
+\setlength{\parskip}{0in}%{2ex plus0.5ex minus0.2ex}
+\setlength{\parindent}{0.5in}
+
+%This uses sectsty package to change the style of the headings.
+%\allsectionsfont{\sffamily\underline}
+%\allsectionsfont{\large\centering\underline}
+%\sectionfont{\normalfont\sffamily\large\underline\bfseries}
+%\subsectionfont{\normalsize\underline}
+
+%This will underline section and subsection headings
+%\titleformat{\section}{\large\centering\bfseries}{\thesection}{1em}{}%{\uline}
+%\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{\uline}
+
+\newlength{\SpaceBeforeChapter}
+\setlength{\SpaceBeforeChapter}{0.55in}
+
+
+
+\setlength{\textwidth}{6in}% 8.5 - 1in - 1.5in = 6in
+\setlength{\textheight}{9in}% 11 - 1in - 1in = 9in
+% The height of the header
+\setlength{\headheight}{0.202in}
+% the space between the header and the start of the document is 0.5 - .202, because we want 1in margins
+\setlength{\headsep}{0.298in}
+% We want the page number to display 0.5 inches from the bottom of the text
+\setlength{\footskip}{0.5in }
+% This will make the right margin 1in + 0.5
+\setlength{\oddsidemargin}{0.5in}
+\setlength{\evensidemargin}{0.5in}
+% No horizontal offset is needed
+\setlength{\hoffset}{0pt}
+% We want the header to begin showing at 1.0in + \voffset ~ which is 0.5 for the page number
+\setlength{\voffset}{-0.5in}
+\setlength{\topmargin}{0pt}
+
+% To create triple spacing, we use single spacing, then add 3ex to create triple spacing ~ there may be a more correct way to do this
+\titleformat{\chapter}[display]{\singlespacing\centering\large\bfseries}{\MakeUppercase{\chaptertitlename}~\thechapter}{4ex}{\setlength{\parskip}{0pt}\large\uppercase}[\setlength{\parskip}{0pt}]%{0pt}]
+\titlespacing{\chapter}{0pt}{\SpaceBeforeChapter}{2.5ex}
+
+% Section headers should have a triple space before them (3ex), and a double space after (2ex)
+\titleformat{\section}[block]{\singlespacing\centering\normalsize\bfseries}{\thetitle}{1ex}{\normalsize}
+\titlespacing{\section}{0pt}{3ex}{0ex}
+
+% Subsection headers should have a double space before them (2ex), and a double space after (2ex)
+% And they should not be centered
+\titleformat{\subsection}{\singlespacing\normalsize\bfseries}{\thetitle}{1ex}{}
+\titlespacing{\subsection}{0pt}{3pt}{0ex}
+%\titlespacing{\subsection}{0pt}{2ex}{0ex} %original LMK, double space better expressed with 3pt
+
+%spacing for subsubsections
+\titlespacing{\subsubsection}{0pt}{3pt}{0ex}
+
+\newcounter{currpart}
+
+
+\renewcommand{\cftpartfont}{\normalfont}
+\renewcommand{\cftpartpagefont}{\normalfont}
+\renewcommand{\cftchapfont}{\normalfont}
+\renewcommand{\cftchappagefont}{\normalfont}
+\renewcommand{\cftchappresnum}{CHAPTER }
+\renewcommand{\cftpartpresnum}{PART }
+\renewcommand{\cftfigpresnum}{Figure }
+\renewcommand{\cftfigaftersnum}{:}
+\renewcommand{\cfttabaftersnum}{:}
+\renewcommand{\cftchapnumwidth}{7em}
+\renewcommand{\cftfignumwidth}{5.5em}
+\renewcommand{\cfttabnumwidth}{5.5em}
+
+%\renewcommand{\cftXdotsep}{0}
+
+\renewcommand{\cftpartleader}{\cftdotfill{\cftsecdotsep}}
+\renewcommand{\cftchapleader}{\cftdotfill{\cftsecdotsep}}
+\renewcommand{\cftdotsep}{0}
+\cftsetpnumwidth{1.3em} %1 in LMK's thesis, increased to take care of wide roman numerals
+\setlength{\cftchapindent}{0pt}
+\setlength{\cftfigindent}{0pt}
+\setlength{\cfttabindent}{0pt}
+\addtocontents{lof}{\protect\noaddvspace}
+\addtocontents{lot}{\protect\noaddvspace}
+
+%\setlength{\itemsep}{0ex}
+%\setlength{\topsep}{0ex}
+%\setlength{\partopsep}{0ex}
+
+  \let\oldthebibliography=\thebibliography
+  \let\endoldthebibliography=\endthebibliography
+  \renewenvironment{thebibliography}[1]{%
+    \begin{oldthebibliography}{#1}%
+      \setlength{\parskip}{0pt}%
+      \setlength{\itemsep}{0pt}%
+  }%
+  {%
+    \end{oldthebibliography}%
+  }
+
+
+  \let\olditemize=\itemize
+  \let\endolditemize=\enditemize
+  \renewenvironment{itemize}{%
+\vspace{-.15in} %hard codes the vertical space before the environment
+    \begin{olditemize}%
+\setlength{\parsep}{0ex}
+\setlength{\topsep}{0ex}
+\setlength{\partopsep}{0ex}
+      \setlength{\parskip}{0pt}%
+      \setlength{\itemsep}{0pt}%
+  }%
+  {%
+    \end{olditemize}%
+  }
+
+  \let\oldenumerate=\enumerate
+  \let\endoldenumerate=\endenumerate
+  \renewenvironment{enumerate}{%
+\vspace{-.15in} %hard codes the vertical space before the environment
+    \begin{oldenumerate}%
+\setlength{\parsep}{0ex}
+\setlength{\topsep}{0ex}
+\setlength{\partopsep}{0ex}
+      \setlength{\parskip}{0pt}%
+      \setlength{\itemsep}{0pt}%
+  }%
+  {%
+    \end{oldenumerate}%
+  }
+
+
+
+\renewcommand{\baselinestretch}{2.0}
+%Main file to compile the thesis.
+%DO NOT CHANGE THIS FILE, EXCEPT FOR THE INCLUDE COMMANDS
+
+%\flushbottom
+\allowdisplaybreaks
+
+    % THIS WILL FORCE EQUATION NUMBERS TO START OVER WITH EACH
+    % NEW CHAPTER
+    \numberwithin{equation}{chapter}
+    \renewcommand{\theequation}
+        {\arabic{chapter}.\arabic{equation}}
+    \renewcommand{\thefigure}
+        {\arabic{chapter}.\arabic{figure}}
+    \renewcommand{\thetable}
+        {\arabic{chapter}.\arabic{table}}
+
+    % using fancyhdr ............................................
+    \pagestyle{fancy}
+    \renewcommand{\chaptermark}[1]
+    {\markboth{\textit{\chaptername\ \thechapter.\ #1}}{}}
+    % the header
+    \lhead{}%{\textit{Your Name}}
+    \chead{}%{\leftmark}
+    \rhead{\thepage}
+    % the footer
+    %\lfoot{}
+    \cfoot{}
+    \rfoot{}
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+
+    \title{Your Title}
+    \author{Your Name}
+    \date{Month Year}
+
+\newcommand{\ds}{\displaystyle}
+\newcommand{\p}{\partial}
+\newcommand{\R}{\text{I\!R}}
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{example}[theorem]{Example}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{definition}[theorem]{Definition}
+% \newtheorem{algorithm}{Algorithm}
+%\renewcommand{\cftfigfont}{Figure }
+%\renewcommand{\cfttabfont}{Table }
+
+%This is to avoid widows, orphans, and hypenations at the end of a page.
+\brokenpenalty=10000
+\widowpenalty=10000
+\clubpenalty=10000
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\title{Robotic Odor Source Localization Using Vision and Olfaction Sensing}
+\author{Sunzid Hassan}
+\date{June 27, 2024}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\makeatletter
+\renewenvironment{thebibliography}[1]
+    {\chapter*{\bibname}%
+     \@mkboth{\MakeUppercase\bibname}{\MakeUppercase\bibname}%
+     \addcontentsline{toc}{chapter}{\bibname}%
+     \list{\@biblabel{\@arabic\c@enumiv}}%
+          {\settowidth\labelwidth{\@biblabel{#1}}%
+           \leftmargin\labelwidth
+           \advance\leftmargin\labelsep
+           \setlength{\itemsep}{1\baselineskip}  % Set space between entries
+           \setlength{\parsep}{0pt}             % No space between lines in the same entry
+           \@openbib@code
+           \usecounter{enumiv}%
+           \let\p@enumiv\@empty
+           \renewcommand\theenumiv{\@arabic\c@enumiv}}%
+     \sloppy
+     \clubpenalty4000
+     \@clubpenalty \clubpenalty
+     \widowpenalty4000%
+     \sfcode`\.\@m}
+    {\def\@noitemerr
+      {\@latex@warning{Empty `thebibliography' environment}}%
+     \endlist}
+\makeatother
+
+% Rename the bibliography
+\renewcommand{\bibname}{\MakeUppercase{Bibliography}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+\begin{comment}
+\thispagestyle{empty}
+
+\begin{singlespace}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Good advice for feedback from proofreaders in general:
+When the format for a certain type of entry, say a section heading,
+is marked as ``to be corrected" (long section headings are supposed
+to be in inverted pyramid form), it is best to
+check the format of {\em all} these entries, as
+the format needs to be
+consistent overall.
+
+
+\end{singlespace}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\clearpage
+
+\thispagestyle{empty}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{singlespace}
+
+\centerline{\bf Notes for Proofreading and Format Checking}
+
+\vspace{.1in}
+
+
+We appreciate the services provided by proofreaders and
+format checkers to assure uniformly high quality of documents
+produced at Louisiana Tech University.
+Because of the differences between mathematical
+documents and other documents, we request that the following
+be kept in mind.
+
+\begin{itemize}
+\item
+This document was typeset using Louisiana Tech's approved
+\LaTeX \ template. Therefore most formatting
+should be a non-issue.
+
+\item
+Issues that should not require correction, except
+as indicated below.
+
+\vspace{.1in} %counteracts the macro that is calibrated for double spaced typing
+
+\begin{itemize}
+\item
+Global margins, order of sections, page numbering,
+title page, format of
+headings, table of contents, list of figures, list of tables.
+(All approved when the template was created.)
+
+\item
+\LaTeX \ is {\em the} professional standard for mathematical typesetting.
+Equations are typeset with
+the \LaTeX \ default options, which should not be adjusted.
+
+\item
+Some built in font sizes cannot be changed.
+Font sizes for headings, etc.,
+were approved, even if they may look a little different
+than in WORD documents.
+
+\end{itemize}
+
+\item
+Issues that require attention.
+There are some situations in which
+\LaTeX' automatic formatting is less than optimal.
+
+\vspace{.1in} %counteracts the macro that is calibrated for double spaced typing
+\begin{itemize}
+\item
+Margin infractions on individual lines.
+The global margins have been approved, but if the program
+does not know how to split a long term, it can spill into the margin.
+
+This is especially likely in typeset equations and can and should be
+fixed.
+
+\item
+Widows and orphans. Linebreaking is automatic and sometimes
+leaves the first line of a paragraph on the preceding page or
+puts the last line on the next page.
+
+\item
+English spelling, grammar, punctuation, etc.
+
+\item
+{\em Gross} infractions on the placement and spacing of figures.
+
+Because of the way \LaTeX \ imports and creates images,
+the distance between a figure and its caption can vary slightly.
+Large white spaces should be flagged, though.
+
+\end{itemize}
+
+\item
+Please mark {\em all} recommended changes in the first
+pass through.
+
+\end{itemize}
+
+\end{singlespace}
+\end{comment}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\clearpage
+
+\setcounter{page}{0}
+
+\pagenumbering{roman}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\thispagestyle{empty}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\include{Main/01_titlePage}
+
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\includepdf[pages=1]{Main/gsform13}
+
+% \include{Main/02_0_signaturePage}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\include{Main/02_abstract}
+
+\vfill\vfill
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\include{Main/03_0_scholarly_dissemination}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\include{Main/03_dedication}
+
+% \newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\include{Main/04_contents}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\include{Main/05_tables} % COMMENT OUT THE LINE IF NO TABLES
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\include{Main/06_figures} % COMMENT OUT THE LINE IF NO FIGURES
+
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\include{Main/07_acknowledgement}
+
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% \include{Main/08_preface}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\pagenumbering{arabic}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\include{Main/11_chapter_01} % Introduction
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\include{Main/12_chapter_02} % Thesis body starts, as many chapters as necesssary
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\include{Main/13_chapter_03}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\include{Main/14_chapter_04}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\addtocontents{toc}{\protect\renewcommand{\protect\cftchappresnum}{APPENDIX } }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\include{Main/15_chapter_05} % Conclusions
+%MUST PUT LAST CHAPTER IN THIS FILE TO HAVE FIRST APPENDIX CALLED
+%APPENDIX, NOT CHAPTER IN TABLE OF CONTENTS
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\appendix
+
+%\addcontentsline{toc}{chapter}{APPENDICES}
+
+
+
+%~
+%\clearpage
+
+
+\renewcommand{\thefigure}{\Alph{chapter}.\arabic{figure}}
+\renewcommand{\thetable}{\Alph{chapter}.\arabic{table}}
+
+
+% \include{Main/21_appendix_A} %Comment out if there are no appendices
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Bibliography
+% \addcontentsline{toc}{chapter}{BIBLIOGRAPHY}
+% \renewcommand{\bibname}{\MakeUppercase{Bibliography}}
+
+\begin{singlespace}
+\bibliographystyle{IEEEtran}
+\bibliography{Main/References}
+\end{singlespace}
+
+%Note: There also was a change in the code for the bibliography so that 
+%entries are single spaced with a double space between entries.
+
+% \baselineskip = 24pt
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% \include{Main/23_CV}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\end{document}
