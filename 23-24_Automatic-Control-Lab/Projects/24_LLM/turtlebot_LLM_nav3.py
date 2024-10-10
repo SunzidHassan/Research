@@ -228,20 +228,18 @@ class Server:
             self.robot_prompt = f"""
             Task: Determine the best direction for a mobile robot to move towards an odor source.
 
-            The given image is the robot's front view.
-            Action Selection Instruction 1: If there is an vapor emitting object in the image, it is likely the odor source. If the likely odor source is in the center of the image, the robot should move forward to approach it. (Action = 1).
-            Action Selection Instruction 2: If there is an vapor emitting object in the image, it is likely the odor source. If the likely odor source is in the right part of the image, the robot should move right to approach it. (Action = 2)
-            Action Selection Instruction 3: If there is an vapor emitting object in the image, it is likely the odor source. If the likely odor source is in the left part of the image, the robot should move left to approach it. (Action = 3)
-            Action Selection Instruction 4: If there is no object that can emit vapor in the image, and if "current odor concentration" is High, then move upwind to approach the odor source. (Action = 4)
-            Action Selection Instruction 5: If there is no object that can emit vapor in the image, and if "current odor concentration" is Low, move crosswind. (Action = 5)
+            Input image: The given image is the robot's front view.
+            Input data: "current odor concentration": {self.chemical}.
 
-            Output Instruction 1: If there is a vapor-emitting object in the image, selection one of the actions 1, 2 or 3.
-            Output Instruction 2: If there is no vapor emiting object in the image, select one of the actions 4 or 5 based on "current odor concentration" value.
-            Output Instruction 3: Respond with the corresponding numerical value of the action (1, 2, 3, 4, or 5) without any additional text or punctuation.
+            Action Selection Instruction 1: If there is an vapor emiting object in the image, it is likely the odor source. If the likely odor source is in the center of the image, the robot should move forward to approach it. (Action = 1).
+            Action Selection Instruction 2: If there is an vapor emiting object in the image, it is likely the odor source. If the likely odor source is in the right part of the image, the robot should move right to approach it. (Action = 2)
+            Action Selection Instruction 3: If there is an vapor emiting object in the image, it is likely the odor source. If the likely odor source is in the left part of the image, the robot should move left to approach it. (Action = 3)
+            Action Selection Instruction 4: If there is no object that can emit vapor in the image, and if "current odor concentration" is greater than {self.chmThr}, then move upwind to approach the odor source. (Action = 4)
+            Action Selection Instruction 5: If there is no object that can emit vapor in the image, and if "current odor concentration" is less than {self.chmThr}, move crosswind. (Action = 5)
 
-            Input data: "current odor concentration" is High: {self.chemical > chmThr}.
-
-            Your answer is: """
+            Output Instruction 1: If there is a vapor-emiting object in the image, selection one of the actions 1, 2 or 3.
+            Output Instruction 2: If there is no vapor-emiting object in the image, select one of the actions 4 or 5.
+            Output Instruction 3: Respond with the corresponding numerical value of the action (1, 2, 3, 4, or 5) without any additional text or punctuation."""
             self.actionID = self.LLM4o()
 
     def check_behavior(self, behavior_switch):
