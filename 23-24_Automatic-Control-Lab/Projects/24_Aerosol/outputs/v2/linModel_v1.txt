@@ -1,0 +1,4 @@
+Sequential(
+  (0): Linear(in_features=11, out_features=32, bias=True)
+  (1): Linear(in_features=32, out_features=22, bias=True)
+)
