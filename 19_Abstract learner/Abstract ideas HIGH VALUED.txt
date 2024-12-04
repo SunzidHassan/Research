@@ -1,0 +1,25 @@
+HIGH VALUED OPPORTUNITY!!!
+
+Case study of ML in Bangladesh corporate sector:
+
+what is the general benefit:
+1. We want to model customer segments from available little data (purchase pattern etc.), which'll help us create customised branding effort
+2. We want to model purchase pattern of BD customers segments with ML, so that we can use targeted recommendation
+3. Some sort of application of transfer learning
+4. Overall market classification and gap
+
+2.1 Un/Supervised: labeled input for supervised - akin to recommender system - attributes of user id (at each week, what the user purchases, given the factors - discount, ?) vs purchase history - predict further purchase pattern or recommendation, cross match with actual result. What can be usefullness in terms of profitability.
+
+2.2 RL: state (similar to factors selected under recommender system), action (buy or don't buy), reward (match if 1, 0 if not). However, there are many different customers, will there be many dfiferent agents?
+- predict further purchase pattern or recommendation, cross match with actual result. What can be usefullness in terms of profitability.
+
+Homework:
+a map of consumer classes
+linking behavioral cycle of consumers with the map, the differences, and different strategies to engage them
+what are the existing data avaialble - what can be cleaned and used (discount available for each product at different weeks can be cleaned)
+
+available data:
+customer purchase history - done
+offered discount compared to MRP - need content data of tracker and system product match - only keep campaign tracker data of those products
+branding: target group (available info about customers), selected products, methods, reach (width, repetation) - need to check data availability
+seller payment data - an organized incomplete (seller payment trackers) and disorganized more complete source (accounting trackers) - it'd be great if the name of account data matches system group name

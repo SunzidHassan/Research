@@ -1,0 +1,151 @@
+---   ---
+Approach
+---   ---
+
+- Make digging effective and less oerwhelming: What I'm searching for, why I'm searching that > have I found what I was looking for, or anything new?
+
+1. Questions, todos and approach
+2. Questions and digging notes
+3. Evidence backed writeup.
+
+---   ---
+Organization
+---   ---
+
+1: Objective
+1.1: Straight and assumption questions
+1.1.1: Answer questions
+
+---   ---
+Objective
+---   ---
+
+Objective (by designing internal environment)
+(1) Transferable Predictive Knowledge learning
+(2) Effective transfer (merge unique learnings towards objectivity/causality)
+(3) Using the knowledge as effective (accuracy, sample efficiency, limitations of RL like sparse reward etc.) inductive bias for agent solving releted RL task.
+
+Evidence backed answers should tell if objectives are possible.
+
+---   ---
+Todos
+---   ---
+
+(0.1 Que) Explanatory vs predictive knowledge
+
+---
+
+(0.3) Nature of task and agent space
+
+---
+(1.1 Que) What kind of Predictive Knowledge to transfer
+- reward/cumulent function (map states to reward/cumulent)
+- relational network representation
+- general value function (packaged with states or deconvoluted state ideas - policy is greedy over value)?
+- causal model
+
+---
+(1.2 Assumption) Will common observation and action reference, and common basis allow transferable knowledge?
+
+---
+
+(1.21) common basis
+(1.21.1) Literature on human transfer: extrinsic, intrinsic and learned reward from common basis - evidence done
+
+(1.21.2) Goal is just survival, all other tasks as high level as derivative/matrix transformation - GVF forecast as answer to just one question for all task
+
+(1.21.3 Que) Common Basis: How to learn reward sense/function which outputs basis value given any task - human imitating?
+
+(1.21.4 Que) Difference of learning human imitating reward function that assigns high value to survival states and actual valuation of survival states?
+
+---
+
+(1.22) common observation reference
+(1.22.1) Literature on human transfer: Nature brain paper, not able to think concepts without words
+
+(1.22.2) Transfer learning literature
+
+---
+
+(1.23) common action reference
+
+(1.24 Assumption) Natural AI: will natural reward function for artificial agent like minimizing causal entropy instead of human imitating reward function lead to some sort of intelligence without handcoding?
+- RL and evolution literature
+- Evolution task environment with constant entropy and opportunity
+- Pre-built learning system
+- Allowed development of actions/options.
+
+(1.25 Assumption) Will bottom up training - high level prediction from low level prediction - eliminate limitations of RL like sparse reward by ensuring better causal relation without basic unknowns and allow more reasonable transfer?
+- Adam thesis
+- TD network
+
+---   ---
+
+(2.1 Que) How to transfer/merge unique parts, and approach causality/objectivity?
+
+---
+
+(2.2 Assumption) Given common basis, can value of state be deconvoluted into values of components dynamics, and can we derive state value from component dynamics values?
+
+(2.21 Que) Derive state value from component dynamics Using which computation?
+
+(2.22 Ans) Will top down state deconvolution allow search of learned skills?
+- breaking down into auxiliary task or known task literature
+- using history from other tasks with same component dynamics
+
+---   ---
+
+(3.1 Que) Use PK as inductive bias?
+
+> Digging: Transfer litarature
+
+---   ---
+---   ---
+0/12 sessions
+
+> Transfer learning literature
+(1.1 Que): What kind of Predictive Knowledge to transfer
+	- reward/cumulant function (map states to reward/cumulant)
+	- relational network representation
+	- general value function (packaged with states or deconvoluted state ideas 	- policy is greedy over value)?
+	- causal model
+
+(1.22.2): just transfer or representation transfer literature - common observation/representation
+
+(1.23): common action reference
+
+---
+
+> ?
+How to transfer unique parts [like set union, but for two functions (or whatever applies for the type of PK)]
+
+---
+
+> Intrinsic paper
+(1.21.2): all goals are derivatives of basis
+
+---
+
+> Human imitating reward function learning literature
+(1.21.3 Que) and (1.21.4 Que): , and difference of it from valueing state
+
+---
+
+> Evolution and entropy literature
+(1.24) Natural reward function given environment
+
+---
+
+> Adam thesis
+(1.25) Bottom up training for causal hierarchical learning
+
+---
+
+> ?
+Deconvoluting state value into parts idea-dynamics
+And deriving state value from parts
+
+---
+
+> Transfer lit
+Using applicable PK as inductive bias for related task
