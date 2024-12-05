@@ -1,0 +1,2 @@
+0,1
+"{'model_name': 'NonLinModel_v5', 'model_loss': 9.79332, 'model_acc': 1.42, 'train_time': 2607.63}","{'model_name': 'CNNModel_v5', 'model_loss': 9.78262, 'model_acc': 1.3, 'train_time': 2596.38}"
