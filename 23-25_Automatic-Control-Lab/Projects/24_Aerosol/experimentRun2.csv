@@ -1,0 +1,7 @@
+,model_name,model_loss,model_acc,train_time
+0,CNNModel_v5,9.85162,1.43,727.84
+1,CNNModel_v6,9.8761,1.38,719.32
+2,CNNModel_v7,11.04089,0.05,722.75
+3,CNNModel_v8,9.84724,1.37,876.28
+4,CNNModel_v9,9.85195,1.37,874.42
+5,CNNModel_v10,9.81477,1.38,827.31
