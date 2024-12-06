@@ -1,8 +1,8 @@
 # API Key
-23-24_Automatic-Control-Lab/Projects/24_LLM/config.yaml
+23-25_Automatic-Control-Lab/Projects/24_LLM/config.yaml
 
 # Aerosol raw data
-23-24_Automatic-Control-Lab/Projects/24_Aerosol/data
+23-25_Automatic-Control-Lab/Projects/24_Aerosol/data
 
 # Log files
 *.log
