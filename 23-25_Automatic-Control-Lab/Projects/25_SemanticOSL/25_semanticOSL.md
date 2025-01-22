@@ -4,12 +4,20 @@ Format:
 
 ---
 ## To-Do
+Literature review:
+- Anemotactic OSL method to generate 2D map
+- VLM to generate semantic 2D map
+
+Issues:
+- No sim with multiple gasses
+- No sim with e-nose?
+
+Tools:
+- Isaac visual SLAM
+
 Olfaction processing:
 - Find gas sensors (Adafruit, e-nose, etc.), and simulators.
 - Filter gasses that can be sensed from [Flavornet](https://www.flavornet.org/) to get a lookup table of gas to concept
-
-Vision processing:
-- RGB-D > Semantics > Map/Memory
 
 Multimodal sensor fusion:
 - Open-set 3D map
@@ -50,11 +58,47 @@ Notes:
 
 ---
 ## Multimodal LLM-based Navigation
-* ** Short Title**: "TITLE", CONFERENCE, YEAR. [[Paper](link)] [[Code](link)] [[Website](link)]
+* ** Short Title**: "TITLE", CONFERENCE, YEAR. [[Paper](https://arxiv.org/abs/2312.03275)] [[Code](https://github.com/bdaiinstitute/vlfm)] [[Website](https://naoki.io/portfolio/vlfm)]
 
 * **ReMEmbR**: "ReMEmbR: Building and Reasoning Over Long-Horizon Spatio-Temporal Memory for Robot Navigation", arXiv, 2024. [[Paper](https://arxiv.org/abs/2409.13682)] [[Code](https://github.com/NVIDIA-AI-IOT/remembr)] [[Website](https://nvidia-ai-iot.github.io/remembr/)] [[Blog](https://developer.nvidia.com/blog/using-generative-ai-to-enable-robots-to-reason-and-act-with-remembr/)]
-
         Anwar et al. `\cite{anwar2024remembr}` proposes ReMEmbR, that combines LLMs, VLMs and retrieval-augmented generation (RAG) to enable robots to reason and take actions over whey they observe during long-horizon deployment. It uses VLMs and vector databases to build long-horizon semantic memory. An LLM is used to query and reason over the memory. The system is tested on NVIDIA Jetson Orin edge computing devices on a mobile robot.
+
+* **VLFM**: "Vision-Language Frontier Maps for Zero-Shot Semantic Navigation", ICRA, 2024. [[Paper](link)] [[Code](link)] [[Website](link)]
+
+>**Introduction:**  
+>Yokoyama et al. proposed VLFM - a zero-shot semantic navigation using frontier-based exploration.
+>Framework: VLFM builds occupancy maps from depth observations to identify frontiers, and language-grounded value map using RGB and VLM. This map is used to identify the most promising frontier to explore for finding instance of a given target object category.
+>Validation: Habitat simulator - Gibson, Habitat-Matterport 3D, Matterport 3D.
+>
+>**Related Works:**
+>Zero-shot ObjectNav
+>    - Frontier-based exploration involvs visiting boundaries between explored and unexplored areas on a map that is iteratively built with exploration. Froentiers are chosen based on infotaxis, nearest-first (CoW), LLM selection (LGX, ESC). SemUtil use BERT to embed class labels of objects near frontier, and compare them to text embeding of target object to select frontier.  
+> 
+>**Problem Formulation: ObjectNav**
+>- finding a target object category in unknown environment.
+>- Access to RGB-D camera, odometry.
+>- Actions: forward, left, right, look up, look down, stop.
+>- Success: if stop is called within 1m of any instance of target object in 500/fewer steps.
+>
+>**Vision-Language Froentier Maps:**
+>1. Initialization: robot rotates to set up frontier and value maps.
+>2. Exploration (till target is detected): update frontier and value maps, generate frontier waypoints and select most valueable waypoint to navigate to the target object.
+>3. Goal navigation: if target object is detected, it navigates to the nearest point and triggers if it's within sufficient proximity.
+>
+>* Waypoint generation: obstacle map from depth and odometry observations (like SLAM). Identify each boundary that separates explored and unexplored areas, identifying the midpoints as potential frontier waypoints. Quantify of waypoints will vary until the entire environment has been explored (unsuccessfull STOP).
+>* Value map generation: similar to obstacle map - with value and confidence scores. 
+>    * Value score: BLIP-2 cosine similarity score from RGB observation and text prompt containing the target object ("Seems like there is a <target object> ahead"). These scores are then projected onto value channel of the top-down value map.
+>    * Confidence score: how to update semantic pixel value. If pixel not seen, don't update value. Pixels along 0-degree FOV has confidence value of 1, left and right edge has 0. In between values follow $\cos^2\left(\frac{\theta}{\theta_{\text{fov}/2}}\times\pi/2\right)$, wehre $\theta$ is the angel between pixel and optical axis, and $\theta_{\text{fov}}$ is the horizontal FOV of the robot's camera. If a pixel is seen twice, an confidence weighted average is taken.
+>* Ojbect detection: if object is detected using YOLOv7, Mobile-SAM is used to extract its contour using RGB image and bounding box. The contour is matched with depth image to determine the closest point, which is then used as the goal waypoint.
+>* Waypoint navigation: the robot has either frontier or target object waypoint. Variable Experience Rollout (VER) RL method is used to train Point Goal Navigation (PointNav) policy, which is used to determine action to reach current waypoint using visual observation and odometry.
+>
+> Baselines:
+>* CoW: explores closest frontier until target object is detected using CLIP, then direct navigation to the object.
+>* ESC, SemUtil: performs semantic frontier-based nav, frontiers are evaluated using detected object>LLM.
+>* ZSON: trained on ImageNav.
+>* PONI, SemExp: build maps during navigation, train task specific poligies to perform semantic inference of likely target location.
+>* PIRLNav: trained form human demonstrations.
+>* RegQLearn: RL
 
 
 * **NaVid**: "Video-based VLM Plans the Next Step for Vision-and-Language Navigation", RSS , 2024. [[Paper](https://arxiv.org/pdf/2402.15852.pdf)] [[Code](https://github.com/jzhzhang/NaVid-VLN-CE)] [[Website](https://pku-epic.github.io/NaVid/)]
