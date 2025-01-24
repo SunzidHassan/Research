@@ -25,22 +25,23 @@ Multimodal sensor fusion:
 
 ---
 ## Overview
-* [OSL Review](#osl-review)
+* [OSL](#osl)
 * [Semantic OSL](#semantic-osl)
+* [Probabilistic Inference in OSL](#probabilistic-inference-in-osl)
 * [Multimodal LLM-based Navigation](#multimodal-llm-based-navigation)
 * [Simulation Platforms](#simulation-platforms)
 * [Neural Fields in Robotics](#neural-fields-in-robotics)
 
 ---
-## OSL Review
+## OSL
+* **Probabilistic MAP OSL**: "Robotic Gas Source Localization With Probabilistic Mapping and Online Dispersion Simulation", CONFERENCE, YEAR. [[Paper](https://arxiv.org/abs/2304.08879)]
+> 
+
 * **OSL Review**: "Recent Progress and Trend of Robot Odor Source Localization", IEEJ Transactions on Electrical and Electronic Engineering, 2021. [[Paper](https://onlinelibrary.wiley.com/doi/full/10.1002/tee.23364)]
 
 ---
 ## Semantic OSL
-* ** Short Title**: "TITLE", CONFERENCE, YEAR. [[Paper](link)] [[Code](link)] [[Website](link)]
-
-Notes:
-- https://www.flavornet.org/
+>[Flavornet](https://www.flavornet.org/)
 
 * **Semantic OSL**: "A Semantic-Based Gas Source Localization with a Mobile Robot Combining Vision and Chemical Sensing", Sensors, 2018. [[Paper](https://www.mdpi.com/1424-8220/18/12/4174)]
 
@@ -54,6 +55,24 @@ Notes:
 * **Semantic Olfaction-Vision**: "Olfaction, Vision, and Semantics for Mobile Robots. Results of the IRO Project", Sensors, 2019. [[Paper](https://www.mdpi.com/1424-8220/19/16/3488)]
 
         Monroy et al. `\cite{monroy2019olfaction}` discussed the results of five-year long project IRO: Improvement of the sensory and autonomous capability of Robots through Olfaction. The project covers 3 main goals - (1) design of an e-nose, (2) object recognition using RGB-D vision system, and (3) exploiting high-level olfactory and visual semantic information in planning and executing.
+
+
+---
+## Probabilistic Inference in OSL
+
+* **Infotaxis**: "'Infotaxis' as a strategy for searching without gradients", Nature, 2007. [[Paper](https://www.nature.com/articles/nature05464)]
+>$\mathcal{T_{t}}$ time and coordinates of hit. 
+>$P_t(\mathbf{r_0})$ is the posterior probability distribution of unknown source $\mathbf{r_0}$. 
+>Odor particles are emitted by source at rate $R$, have finite lifetime $\tau$, propagate with effective diffusivity $D$ and are advected by a mean current or wind $\mathbf{V}$.
+>Expected search time $<T>$ is bounded by $<T>\geq e^{S-1}$, where entropy $S\equiv-\int{\text{dx}P(\mathbf{x})}$. The entropy quantifies how spread-out the distribution is, and goes to zero when the position of the source is localized. The rate of acquisition of information is quantified by the rate of entropy reduction.  
+>To balance exploration-exploitation, 'infotaxis' chooses the direction that locally maximises the expected rate of information acquisition, thereby maximises reduction of entropy of the posterior probability field.  
+>If the searcher is at location $\mathbf{r}$ at time $t$ and gathered information into the field $P_t(\mathbf{r_0})$ having entropy $S$. The variation of entropy expected upon moving to one of the neighbouring points $\mathbf{r}_j$ (or standing still) is: $$\overline{\Delta S}(\mathbf{r_i} \to \mathbf{r_j}) = P_t(\mathbf{r_j})[-S] + \left[1 - P_t(\mathbf{r_j})\right] \left[\rho_0(\mathbf{r_j}) \Delta S_0 + \rho_1(\mathbf{r_j}) \Delta S_1 + \dots \right]$$
+> The first term on the right-hand side corresponds to finding the source, that is, $P_{t+1}$ becoming a $\delta$-function and entropy becoming zero, which occurs with estimated probability $P_t(\mathbf{r}_j)$. The second term one the right-hand side corresponds to the alternative case when the source is not found at $\mathbf{r}_j$. Symbols $\rho_k(\mathbf{r}_j)$ denote the probability that $k$ detections be made at $\mathbf{r}_j$ during a time-step $\Delta t$, given by a Poisson law $\rho_k=\frac{h^ke^{-h}}{k!}$ for the independent detections. The expected number of hits is estimated as $h(\mathbf{r}_j)\equiv\Delta t\int P_t(\mathbf{r}_0)R(\mathbf{r}_j|\mathbf{r}_0)d\mathbf{r}_0$, with $R(\mathbf{r}|\mathbf{r}_0)$ denoting the mean rate of hits at position $\mathbf{r}$ if the source is located in $\mathbf{r}_0$. The symbols $\Delta S_k$ denote the change of entropy between the fields $P_{t+1}(\mathbf{r}_0)$ and $P_{t}(\mathbf{r}_0)$.
+>Two effects contribute to $\Delta S_k$: first $P_{t+1}(\mathbf{r}_0)\equiv0$ because the source was not found; and second, the estimated prosterior probabilities are modified by the $k$ cues received. The first term on the right-hand side of the equation is the exploitative term, weighing only the event that the source is found at the point $\mathbf{r}_j$ and favoring motion to maximum likelihood points. The second term on the right-hand side of the equation is the information gain from receiving additional cues.
+
+
+
+* **OTTO**: "A Python package to simulate, solve and visualize the source-tracking POMDP", Journal of Open Source Software, 2022. [[Paper](https://royalsocietypublishing.org/doi/10.1098/rspa.2022.0118)] [[Code](https://github.com/C0PEP0D/otto)]
 
 
 ---
