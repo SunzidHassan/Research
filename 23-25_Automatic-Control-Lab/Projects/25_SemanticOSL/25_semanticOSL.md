@@ -10,7 +10,7 @@ Format:
 
 Literature review:
 
-* Anemotactic OSL method to generate 2D map
+* Infotaxis on:Anemotactic OSL method to generate 2D map
 * VLM to generate semantic 2D map
 
 Issues:
@@ -34,18 +34,21 @@ Multimodal sensor fusion:
 
 ---
 
-## Overview
+## Table of Contents
 
 - [LLM-OSL](#llm-osl)
   - [To-Do](#to-do)
-  - [Overview](#overview)
+  - [Table of Contents](#table-of-contents)
   - [OSL](#osl)
-  - [Semantic OSL](#semantic-osl)
-  - [Probabilistic Inference in OSL](#probabilistic-inference-in-osl)
+    - [Semantic OSL](#semantic-osl)
+    - [Probabilistic Inference in OSL](#probabilistic-inference-in-osl)
   - [Multimodal LLM-based Navigation](#multimodal-llm-based-navigation)
+    - [Semantic Graph Representation from Scene](#semantic-graph-representation-from-scene)
+    - [ObjectNav Challenge](#objectnav-challenge)
+    - [3D Semantic Map from Scene](#3d-semantic-map-from-scene)
+    - [Vector Database Representation from Scene](#vector-database-representation-from-scene)
   - [Simulation Platforms](#simulation-platforms)
   - [Neural Fields in Robotics](#neural-fields-in-robotics)
-    - [Overview](#overview-1)
     - [NeRF in Robotics Survey](#nerf-in-robotics-survey)
     - [Planning/Navigation](#planningnavigation)
 
@@ -53,14 +56,11 @@ Multimodal sensor fusion:
 
 ## OSL
 
-* **Probabilistic MAP OSL**: "Robotic Gas Source Localization With Probabilistic Mapping and Online Dispersion Simulation", CONFERENCE, YEAR. [[Paper](https://arxiv.org/abs/2304.08879)]
->
-
 * **OSL Review**: "Recent Progress and Trend of Robot Odor Source Localization", IEEJ Transactions on Electrical and Electronic Engineering, 2021. [[Paper](https://onlinelibrary.wiley.com/doi/full/10.1002/tee.23364)]
 
 ---
 
-## Semantic OSL
+### Semantic OSL
 >
 >[Flavornet](https://www.flavornet.org/)
 
@@ -78,7 +78,7 @@ Multimodal sensor fusion:
 
 ---
 
-## Probabilistic Inference in OSL
+### Probabilistic Inference in OSL
 
 * **Infotaxis**: "'Infotaxis' as a strategy for searching without gradients", Nature, 2007. [[Paper](https://www.nature.com/articles/nature05464)]
 
@@ -93,16 +93,20 @@ Multimodal sensor fusion:
 
 * **OTTO**: "A Python package to simulate, solve and visualize the source-tracking POMDP", Journal of Open Source Software, 2022. [[Paper](https://royalsocietypublishing.org/doi/10.1098/rspa.2022.0118)] [[Code](https://github.com/C0PEP0D/otto)]
 
----
+* **Probabilistic MAP OSL VGR**: "Robotic Gas Source Localization With Probabilistic Mapping and Online Dispersion Simulation", CONFERENCE, YEAR. [[Paper](https://arxiv.org/abs/2304.08879)]
 
+
+---
 ## Multimodal LLM-based Navigation
 
-* **Short Title**: "TITLE", CONFERENCE, YEAR. [[Paper](https://arxiv.org/abs/2312.03275)] [[Code](https://github.com/bdaiinstitute/vlfm)] [[Website](https://naoki.io/portfolio/vlfm)]
+### Semantic Graph Representation from Scene
+* **ConceptGraphs**: "Open-Vocabulary 3D Scene Graphs for Perception and Planning", ICRA, 2024. [![Paper](https://img.shields.io/badge/arXiv24-b22222)](http://arxiv.org/abs/2309.16650) [![Star](https://img.shields.io/github/stars/concept-graphs/concept-graphs.svg?style=social&label=Star)](https://github.com/concept-graphs/concept-graphs) [![Project_Page](https://img.shields.io/badge/Project_Page-00CED1)](https://concept-graphs.github.io/)
+>**ConceptGraphs** builds open vocabulary 3D scene graphs that can be queried with natural language. LLM and VLM is used to extract image features and captions, which are then used to build an open-vocab 3D scene graph.  
+>**Querying ConceptGraph**: *Query using VLM*: taking CLIP feature vectors of the graph objects and query object, and taking their cosine similarity. *Query using LLM*: serialized scene graph is fed to LLM using simple JSON format. LLM uses object captions to select the most appropriate object for the query. This works better for complex queries.  
+>**Methodology:**: Given an input sequence of RGB-D images with poses, ConceptGraph uses openvacab instance segmentation models to get 2D masks for the objects in those images. Depth information of the masks is used to project individual point clouds of the objects in 3D. The image crops are again fed to VLMs like CLIP to get semantic feature vectors for the objects. The semantic pointcloud and semantic feature vectors are used to measure the spatial and semantic similarity of the objects to existing objects in the map - each objects are merged into one, or added anew. Repeating this process generates an object-based 3D map from input images. Once the map is built, all the nodes is received for the scene graph. An LLM is used to generate edges among the object nodes - LLM will generate positional edge (e.g., stool on top of carpet). , grouping them over time into potential 3D objects. 
 
-* **ReMEmbR**: "ReMEmbR: Building and Reasoning Over Long-Horizon Spatio-Temporal Memory for Robot Navigation", arXiv, 2024. [[Paper](https://arxiv.org/abs/2409.13682)] [[Code](https://github.com/NVIDIA-AI-IOT/remembr)] [[Website](https://nvidia-ai-iot.github.io/remembr/)] [[Blog](https://developer.nvidia.com/blog/using-generative-ai-to-enable-robots-to-reason-and-act-with-remembr/)]
-        Anwar et al. `\cite{anwar2024remembr}` proposes ReMEmbR, that combines LLMs, VLMs and retrieval-augmented generation (RAG) to enable robots to reason and take actions over whey they observe during long-horizon deployment. It uses VLMs and vector databases to build long-horizon semantic memory. An LLM is used to query and reason over the memory. The system is tested on NVIDIA Jetson Orin edge computing devices on a mobile robot.
-
-* **VLFM**: "Vision-Language Frontier Maps for Zero-Shot Semantic Navigation", ICRA, 2024. [[Paper](link)] [[Code](link)] [[Website](link)]
+### ObjectNav Challenge
+* **VLFM**: "Vision-Language Frontier Maps for Zero-Shot Semantic Navigation". [![Paper](https://img.shields.io/badge/ICRA24-8A2BE2)]() [![Paper](https://img.shields.io/badge/arXiv24-b22222)](https://arxiv.org/abs/2312.03275) [![Star](https://img.shields.io/github/stars/bdaiinstitute/vlfm.svg?style=social&label=Star)](https://github.com/concept-graphs/concept-graphs) [![Project_Page](https://img.shields.io/badge/Project_Page-00CED1)](https://naoki.io/portfolio/vlfm)
 
 >**Introduction:**  
 >Yokoyama et al. proposed VLFM - a zero-shot semantic navigation using frontier-based exploration.
@@ -121,7 +125,7 @@ Multimodal sensor fusion:
 >* Actions: forward, left, right, look up, look down, stop.
 >* Success: if stop is called within 1m of any instance of target object in 500/fewer steps.
 >
->**Vision-Language Froentier Maps:**
+>**Vision-Language Frontier Maps:**
 >
 >1. Initialization: robot rotates to set up frontier and value maps.
 >2. Exploration (till target is detected): update frontier and value maps, generate frontier waypoints and select most valueable waypoint to navigate to the target object.
@@ -129,7 +133,7 @@ Multimodal sensor fusion:
 >
 >* Waypoint generation: obstacle map from depth and odometry observations (like SLAM). Identify each boundary that separates explored and unexplored areas, identifying the midpoints as potential frontier waypoints. Quantify of waypoints will vary until the entire environment has been explored (unsuccessfull STOP).
 >* Value map generation: similar to obstacle map - with value and confidence scores.
->   * Value score: BLIP-2 cosine similarity score from RGB observation and text prompt containing the target object ("Seems like there is a <target object> ahead"). These scores are then projected onto value channel of the top-down value map.
+>   * Value score: BLIP-2 cosine similarity score from RGB observation and text prompt containing the target object ("Seems like there is a `target object` ahead"). These scores are then projected onto value channel of the top-down value map.
 >   * Confidence score: how to update semantic pixel value. If pixel not seen, don't update value. Pixels along 0-degree FOV has confidence value of 1, left and right edge has 0. In between values follow $\cos^2\left(\frac{\theta}{\theta_{\text{fov}/2}}\times\pi/2\right)$, wehre $\theta$ is the angel between pixel and optical axis, and $\theta_{\text{fov}}$ is the horizontal FOV of the robot's camera. If a pixel is seen twice, an confidence weighted average is taken.
 >* Ojbect detection: if object is detected using YOLOv7, Mobile-SAM is used to extract its contour using RGB image and bounding box. The contour is matched with depth image to determine the closest point, which is then used as the goal waypoint.
 >* Waypoint navigation: the robot has either frontier or target object waypoint. Variable Experience Rollout (VER) RL method is used to train Point Goal Navigation (PointNav) policy, which is used to determine action to reach current waypoint using visual observation and odometry.
@@ -149,6 +153,7 @@ Multimodal sensor fusion:
 
 * **VLMaps**: "Visual Language Maps for Robot Navigation", CONFERENCE, YEAR. [[Paper](https://arxiv.org/pdf/2210.05714.pdf)] [[Code](https://github.com/vlmaps/vlmaps.git)] [[Website](https://vlmaps.github.io/)] [[CoLab](https://colab.research.google.com/drive/1xsH9Gr_O36sBZaoPNq1SmqgOOF12spV0?usp=sharing)] [[Blog](https://ai.googleblog.com/2023/03/visual-language-maps-for-robot.html?m=1)]
 
+### 3D Semantic Map from Scene
 * **Kimera**: "Kimera: an Open-Source Library for Real-Time Metric-Semantic Localization and Mapping", ICRA, 2020. [[Paper](https://arxiv.org/abs/1910.02490)] [[Code](https://github.com/MIT-SPARK/Kimera-Semantics?tab=readme-ov-file)]
 
 >Kimera is an open-source library for real-time semantic visual SLAM. It allows mesh construction and semantic labelling in 3D.
@@ -164,6 +169,10 @@ Multimodal sensor fusion:
 >* Fusing pixel-aligned foundation features to 3D
 >Map representation: 3D map $\mathcal{M}$ is an unordered set of points, each with a vertex position, normal vector, confidence count, color vector, concept vector.
 >...
+
+### Vector Database Representation from Scene
+* **ReMEmbR**: "ReMEmbR: Building and Reasoning Over Long-Horizon Spatio-Temporal Memory for Robot Navigation", arXiv, 2024. [[Paper](https://arxiv.org/abs/2409.13682)] [[Code](https://github.com/NVIDIA-AI-IOT/remembr)] [[Website](https://nvidia-ai-iot.github.io/remembr/)] [[Blog](https://developer.nvidia.com/blog/using-generative-ai-to-enable-robots-to-reason-and-act-with-remembr/)]
+>Anwar et al. `\cite{anwar2024remembr}` proposes ReMEmbR, that combines LLMs, VLMs and retrieval-augmented generation (RAG) to enable robots to reason and take actions over whey they observe during long-horizon deployment. It uses VLMs and vector databases to build long-horizon semantic memory. An LLM is used to query and reason over the memory. The system is tested on NVIDIA Jetson Orin edge computing devices on a mobile robot.
 
 ---
 
@@ -199,26 +208,11 @@ Multimodal sensor fusion:
 
 ## Neural Fields in Robotics
 
-* **Short Title**: "TITLE", CONFERENCE, YEAR. [[Paper](link)] [[Code](link)] [[Website](link)]
-
 * **NeRF**: "Representing Scenes as Neural Radiance Fields for View Synthesis", Communications of the ACM, 2021. [[Paper](https://arxiv.org/abs/2003.08934)]
 
 [Neural Radiance Fields (NeRF) Tutorial in 100 lines of PyTorch code](https://papers-100-lines.medium.com/neural-radiance-fields-nerf-tutorial-in-100-lines-of-pytorch-code-365ef2a1013)
 
 ---
-
-### Overview
-
-* [NeRF in Robotics Survey](#nerf-in-robotics-survey)
-<!-- - [Object Pose Estimation](#object-pose-estimation)
-- [SLAM](#slam)
-- [Manipulation/RL](#manipulationrl)
-- [Object Reconstruction](#object-reconstruction)
-- [Physics](#physics) -->
-* [Planning/Navigation](#planningnavigation)
-
----
-
 ### NeRF in Robotics Survey
 
 * **NeRF-Robotics**: "Neural Fields in Robotics: A Survey", arXiv, 2024. [[Paper](https://arxiv.org/abs/2410.20220)] [[Repo](https://github.com/zubair-irshad/Awesome-Implicit-NeRF-Robotics?tab=readme-ov-file#slam)]
