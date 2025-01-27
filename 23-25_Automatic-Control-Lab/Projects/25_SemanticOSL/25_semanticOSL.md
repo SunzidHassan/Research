@@ -1,4 +1,23 @@
 # LLM-OSL
+## Table of Contents
+
+- [LLM-OSL](#llm-osl)
+  - [Table of Contents](#table-of-contents)
+  - [To-Do](#to-do)
+  - [OSL](#osl)
+    - [Semantic OSL](#semantic-osl)
+    - [Probabilistic Inference in OSL](#probabilistic-inference-in-osl)
+  - [Multimodal LLM-based Navigation](#multimodal-llm-based-navigation)
+    - [Semantic Graph Representation from Scene](#semantic-graph-representation-from-scene)
+    - [ObjectNav Challenge](#objectnav-challenge)
+    - [3D Semantic Map from Scene](#3d-semantic-map-from-scene)
+    - [Vector Database Representation from Scene](#vector-database-representation-from-scene)
+  - [Simulation Platforms](#simulation-platforms)
+  - [Neural Fields in Robotics](#neural-fields-in-robotics)
+    - [NeRF in Robotics Survey](#nerf-in-robotics-survey)
+    - [Planning/Navigation](#planningnavigation)
+
+---
 
 Format:
 
@@ -31,26 +50,6 @@ Multimodal sensor fusion:
 
 * Open-set 3D map
 * Multimodal NeRF
-
----
-
-## Table of Contents
-
-- [LLM-OSL](#llm-osl)
-  - [To-Do](#to-do)
-  - [Table of Contents](#table-of-contents)
-  - [OSL](#osl)
-    - [Semantic OSL](#semantic-osl)
-    - [Probabilistic Inference in OSL](#probabilistic-inference-in-osl)
-  - [Multimodal LLM-based Navigation](#multimodal-llm-based-navigation)
-    - [Semantic Graph Representation from Scene](#semantic-graph-representation-from-scene)
-    - [ObjectNav Challenge](#objectnav-challenge)
-    - [3D Semantic Map from Scene](#3d-semantic-map-from-scene)
-    - [Vector Database Representation from Scene](#vector-database-representation-from-scene)
-  - [Simulation Platforms](#simulation-platforms)
-  - [Neural Fields in Robotics](#neural-fields-in-robotics)
-    - [NeRF in Robotics Survey](#nerf-in-robotics-survey)
-    - [Planning/Navigation](#planningnavigation)
 
 ---
 
