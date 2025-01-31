@@ -6,7 +6,10 @@
 
 # 25_SemanticOSL sim envs
 23-25_Automatic-Control-Lab/Projects/25_SemanticOSL/Sim
+23-25_Automatic-Control-Lab/Projects/25_SemanticOSL/models
+
 
 # Log files
 *.log
 .Rproj.user
+
