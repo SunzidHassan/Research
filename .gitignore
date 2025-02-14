@@ -8,6 +8,8 @@
 23-25_Automatic-Control-Lab/Projects/25_SemanticOSL/Sim
 23-25_Automatic-Control-Lab/Projects/25_SemanticOSL/models
 
+23-25_Automatic-Control-Lab/Projects/25_SemanticOSL/Agent/models
+23-25_Automatic-Control-Lab/Projects/25_SemanticOSL/Agent/__pycache__
 
 # Log files
 *.log
