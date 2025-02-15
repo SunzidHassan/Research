@@ -36,10 +36,7 @@ def get_objects_centers(objects, target_names):
 
 # # Example usage:
 # # Assume controller.last_event.metadata["objects"] holds the scene objects.
-# objects = controller.last_event.metadata["objects"]
-
-# # To get the centers of objects whose name includes either "Apple" or "Bread":
-# target_items = ["Bread"]
+#   
 # object_centers = get_objects_centers(objects, target_items)
 # print("Centers of specified objects as a tensor:")
 # print(object_centers)

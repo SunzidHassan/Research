@@ -10,6 +10,7 @@
 
 23-25_Automatic-Control-Lab/Projects/25_SemanticOSL/Agent/models
 23-25_Automatic-Control-Lab/Projects/25_SemanticOSL/Agent/__pycache__
+23-25_Automatic-Control-Lab/Projects/25_SemanticOSL/Agent/config.yaml
 
 # Log files
 *.log
