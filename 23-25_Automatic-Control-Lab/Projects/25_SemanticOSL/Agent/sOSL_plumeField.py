@@ -27,7 +27,7 @@ def get_field_value(robot_pos, sourcesPos, q_s=2000, D=10, U=0, tau=1000, del_t=
     lambd = math.sqrt((D * tau) / (1 + (tau * U**2) / (4 * D)))
     
     total = 0.0
-    x, y = robot_pos  # Unpack the robot position
+    x, y, z = robot_pos  # Unpack the robot position
     
     # Loop over each source
     for source in sourcesPos:

@@ -16,7 +16,7 @@ from ultralytics import YOLO
 
 # nav01
 # from sOSL_iThor_reason import goalSimilarity, get_goal_location  # If available.
-from sOSL_plumeField import get_field_value  # Ensure this is available
+# from sOSL_plumeField import get_field_value  # Ensure this is available
 # from sOSL_iThor_objDetector import objDetector, globalLoc
 from sOSL_iThor_navFunc import check_obstacle
 from sOSL_iThor_gndTruth import get_objects_centers  # Imported helper
@@ -25,6 +25,7 @@ from sOSL_iThor_gndTruth import get_objects_centers  # Imported helper
 from openai import OpenAI  # if needed
 # llmPrompt is now integrated into gptNav
 
+    
 # ==========================
 # HELPER FUNCTION: Compress Image
 # ==========================
@@ -41,12 +42,66 @@ def compress_image(image_array, size=(64, 64)):
 # ==========================
 # SENSOR FUNCTIONS
 # ==========================
-def olfactionBranch(sourcePos, controller, plumeConcentration, q_s=2000, D=10, U=0, tau=1000, del_t=1, psi_deg=0):
+
+def get_field_value(x, z, sources, q_s=2000, D=10, U=0, tau=1000, del_t=1, psi_deg=0):
+    """
+    Computes the odor field value at a single (x, z) coordinate as the sum of contributions
+    from one or more odor sources.
+
+    Parameters:
+        x, z       (float): Coordinates at which to evaluate the field.
+        sources    (ndarray or list): A collection of source positions, where each source is [x_s, y_s, z_s].
+        q_s        (float): Source strength.
+        D          (float): Diffusion coefficient.
+        U          (float): Advection velocity (set to 0 if no airflow).
+        tau        (float): Time or scaling parameter.
+        del_t      (float): Time step.
+        psi_deg    (float): Angle in degrees for rotation (direction of advection; irrelevant if U==0).
+
+    Returns:
+        (float): The computed field value at the coordinate (x, z) as the sum of contributions
+                 from all sources.
+    """
+    # Convert psi from degrees to radians
+    psi = math.radians(psi_deg)
+    
+    # Compute lambda; note that if U==0, lambda simplifies to sqrt(D*tau)
+    lambd = math.sqrt((D * tau) / (1 + (tau * U**2) / (4 * D)))
+    
+    total = 0.0
+    # Loop over each source
+    for source in sources:
+        x_s, y_s, z_s = source  # Unpack the source coordinates; ignore y_s here.
+        
+        # Compute differences in x and z relative to the odor source
+        delta_x = x - x_s
+        delta_z = z - z_s
+        
+        # Euclidean distance in the X-Z plane
+        r = math.sqrt(delta_x**2 + delta_z**2)
+        
+        # Avoid division by zero if r==0
+        if r == 0:
+            contribution = - (r / lambd) * del_t
+        else:
+            # Compute the rotated z coordinate (this incorporates advection if U != 0)
+            rotated_z = -delta_x * math.sin(psi) + delta_z * math.cos(psi)
+            
+            term1 = (q_s / (4 * math.pi * D * r)) * math.exp(-rotated_z * U / (2 * D))
+            term2 = - (r / lambd) * del_t
+            contribution = term1 + term2
+        
+        total += contribution
+        
+    return total
+
+
+def olfactionBranch(sourcePos, controller, q_s=2000, D=10, U=0, tau=1000, del_t=1, psi_deg=0):
     """
     Computes odor concentration based on the odor source position and the robot's current position.
     """
-    robot_pos = np.array(list(controller.last_event.metadata["agent"]["position"].values()))
-    plumeConcentration = int(get_field_value(robot_pos, sources=sourcePos, q_s=q_s, D=D, U=U, tau=tau, del_t=del_t, psi_deg=psi_deg))
+    robot_x, robot_y, robot_z = np.array(list(controller.last_event.metadata["agent"]["position"].values()))
+    plumeConcentration = int(get_field_value(robot_x, robot_z, sourcePos, q_s=q_s, D=D, U=U, tau=tau, del_t=del_t, psi_deg=psi_deg))
     return plumeConcentration
 
 def objDetector(itemDF, controller, objDetectorModel):
@@ -94,7 +149,7 @@ def actionTable(itemDF, conf_thres=0.5):
     
     Object names are not included.
     """
-    actions = ["Forward", "Turn Left", "Turn Right"]
+    actions = ["Forward", "Turn Right", "Turn Left"]
     actionID = ['1', '2', '3']
     table = {"Action": actions, "ActionID": actionID, "Obstacle": ["" for _ in actions]}
     return pd.DataFrame(table)
@@ -146,29 +201,38 @@ def get_distance_to_source(controller, sourcePos):
 # ==========================
 # GPT NAVIGATION
 # ==========================
-def payload(api_key, prompt, image, model):
+def payload(api_key, prompt, image, model="gpt-4o"):
     headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"}
-    payload_data = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
+        }
+
+    payload = {
         "model": model,
         "messages": [
             {
                 "role": "user",
-                "content": prompt
+                "content": [
+                    {
+                        "type": "text",
+                        "text": prompt
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{image}"
+                        }
+                    }
+                ]
             }
         ],
-        "max_tokens": 300,
+        "max_tokens": 300
     }
-    response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload_data)
-    response_json = response.json()
-    if "choices" not in response_json or not response_json["choices"]:
-        print("Error in GPT API response:")
-        print(response_json)
-        raise ValueError("GPT API response does not contain 'choices'.")
-    return response_json["choices"][0]["message"]["content"]
+    response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload).json()['choices'][0]['message']['content']
+    return response
 
-def llmPrompt(delimiter, goal, actionDF_str, odor_concentration, prev_odor_concentration):
+def llmPrompt(delimiter, goal, actionDF_str, odor_concentration, prev_odor_concentration=0, step_count=0):
+    
     """
     Generates a prompt for the GPT model to select one action from the action table.
     """
@@ -187,17 +251,17 @@ def llmPrompt(delimiter, goal, actionDF_str, odor_concentration, prev_odor_conce
     - Integer value of current and past odor concentration.
     
     The rules are:
-      1. If there are no obstacles in the Forward direction and the objects in the image align with the target odor source, the robot should move forward.
-      2. If there is no object related to the {goal} present in any direction, the robot should turn left to explore a new view.
-      3. If the Forward direction is blocked, then consider turning left or right if that direction is clear.
-      4. Only one action should be selected.
-      5. Always move towards high odor concentration area.
+      1. Actions that lead to obstacle cannot be selected.
+      2. If the scene in front may contain an object related to the {goal}, the robot should move forward.
+      3. If the forward direction is blocked, or if the scene is unlikely to contain any object related to the {goal} in front, then consider turning left or right if that direction is clear.
+      4. If odor concentration stays same or increases after executing moveAhead, the odor source is likely ahead.
+      5. Only one action should be selected.
     """
     
     actionInstructions = """
-    Action 1: Move forward. (Action_id = 1)
-    Action 2: Rotate right. (Action_id = 2)
-    Action 3: Rotate left. (Action_id = 3)
+    Move forward. (Action_id = 1)
+    Rotate right. (Action_id = 2)
+    Rotate left. (Action_id = 3)
     """
     
     reasoningOutputInstructions = f"""
@@ -206,6 +270,15 @@ def llmPrompt(delimiter, goal, actionDF_str, odor_concentration, prev_odor_conce
     (Provide a brief step-by-step explanation of your decision)
     Selected Action:{delimiter} <Output only one Action_id as an integer>
     Use {delimiter} to separate each step.
+    """
+
+    noReasoningOutputInstructions = f"""
+    Respond with the corresponding numerical value of the action (1, 2, 3) without any additional text or punctuation.
+    """
+    
+    olfactoryReading = f"""
+    Odor concentration at previous time step was: {prev_odor_concentration}
+    Odor Concentration at current time step is: {odor_concentration}
     """
     
     prompt = f"""
@@ -216,29 +289,70 @@ def llmPrompt(delimiter, goal, actionDF_str, odor_concentration, prev_odor_conce
     {delimiter} Current Action Table:
     {actionDF_str}
     {delimiter} Output Instructions:
-    {reasoningOutputInstructions}
+    {noReasoningOutputInstructions}
+    {delimiter} Olfactory reading:
+    {olfactoryReading}
     """
+
+    
+    # if step_count == 0:
+    #     prompt = f"""
+    #     {delimiter} Task:
+    #     {task}
+    #     {delimiter} Available Actions:
+    #     {actionInstructions}
+    #     {delimiter} Current Action Table:
+    #     {actionDF_str}
+    #     {delimiter} Output Instructions:
+    #     {reasoningOutputInstructions}
+    #     {delimiter} Olfactory reading:
+    #     {olfactoryReading}
+    #     """
+    # else:
+    #     prompt = f"""
+    #     {delimiter} Olfactory reading:
+    #     {olfactoryReading}
+    #     """
     
     return prompt
 
-def gptNav(controller, api_key, gpt_model, goal, actionDF):
+
+def gptNav(controller, api_key, gpt_model, goal, actionDF, source_position, step_count):
+    # Retrieve previous odor concentration from the function attribute, if it exists.
+    prev_odor_concentration = getattr(gptNav, "prev_odor_concentration", None)
+    
+    # Get the current odor concentration.
+    current_odor_concentration = olfactionBranch(source_position, controller)
+    
+    # If no previous value exists, initialize it.
+    if prev_odor_concentration is None:
+        prev_odor_concentration = current_odor_concentration
+    
     delimiter = "#####"
-    prompt = llmPrompt(delimiter, goal, actionDF.to_string(index=False))
+    prompt = llmPrompt(delimiter, goal, actionDF.to_string(index=False),
+                        current_odor_concentration, prev_odor_concentration, step_count)
     
     # Compress the current image.
     image_array = controller.last_event.frame
     compressed_bytes = compress_image(image_array, size=(64, 64))
     image_base64 = base64.b64encode(compressed_bytes).decode('utf-8')
     
-    # Here we assume the API supports an "image" parameter; if not, you can alternatively
-    # append the image to the prompt as a data URL.
     response = payload(api_key, prompt, image_base64, gpt_model)
+    
+    # Save the current odor concentration as the previous one for the next call.
+    gptNav.prev_odor_concentration = current_odor_concentration
+    
     return response
 
 # ==========================
 # AUTOMATIC CONTROL LOOP
 # ==========================
-def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, target_items, save_path="itemDF.csv", max_time=150, goal="food burning smell", dist_threshold=1.0, stepMagnitude=0.5):
+import time
+import cv2
+import pandas as pd
+import numpy as np
+
+def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, source_position, save_path="itemDF.csv", max_time=150, goal="food burning smell", dist_threshold=1.0, stepMagnitude=0.5):
     """
     Automatic control loop.
     Each iteration:
@@ -251,37 +365,38 @@ def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, target_item
          GPT will decide the action by analyzing the image.
       6. Logs the time, robot position (x, y), robot yaw, and GPT decision.
     """
+    
+    step_count = 0    
     start_time = time.time()
-    logDF = pd.DataFrame(columns=["time", "robot x", "robot y", "robot yaw", "gpt decision"])
+    logDF = pd.DataFrame(columns=["time", "robot x", "robot z", "robot yaw", "gpt decision"])
     
     print("Automatic control active. Executing GPT-selected actions until timeout or target reached.")
-    print(f"Timeout: {max_time} seconds. Termination if distance < {dist_threshold}.")
     
     while True:
         print("\n=============================")
         print("New Step")
         print("=============================\n")
         elapsed_time = time.time() - start_time
-        print(f"Time elapsed: {elapsed_time:.2f} seconds")
+        print(f"Steps: {step_count}/{40}")
+
+        # if elapsed_time > max_time:
+        #     print(f"\nTime limit of {max_time} seconds reached. Saving itemDF and log, then exiting.")
+        #     _save_itemDF(itemDF, save_path)
+        #     logDF.to_csv("save/trajectory_log.csv", index=False)
+        #     break
         
-        if elapsed_time > max_time:
-            print(f"\nTime limit of {max_time} seconds reached. Saving itemDF and log, then exiting.")
+        if step_count > 40:
+            print(f"\nStep limit of {40} reached. Saving itemDF and log, then exiting.")
             _save_itemDF(itemDF, save_path)
             logDF.to_csv("save/trajectory_log.csv", index=False)
             break
-        
-        # Obtain current scene objects.
-        objects = controller.last_event.metadata["objects"]
-        centers = get_objects_centers(objects, target_items)
-        
-        if centers.size > 0:
-            distances = [get_distance_to_source(controller, center) for center in centers]
+
+        if source_position.size > 0:
+            distances = [get_distance_to_source(controller, center) for center in source_position]
             min_distance = min(distances)
-            sourcePos = centers[np.argmin(distances)]
         else:
             min_distance = float('inf')
-            sourcePos = None
-        
+
         print(f"Current minimum distance to target: {min_distance:.2f}")
         if min_distance < dist_threshold:
             print(f"Robot is within {dist_threshold} of the target. Mission accomplished!")
@@ -298,24 +413,19 @@ def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, target_item
         print(actionDF.to_string(index=False))
         
         # Call GPT navigation to select an action based solely on the (compressed) image.
-        gpt_response = gptNav(controller, api_key, gpt_model, goal, actionDF)
-        # print("GPT response:", gpt_response)
+        gpt_response = gptNav(controller, api_key, gpt_model, goal, actionDF, source_position, step_count)
+        print("GPT response:", gpt_response)
         
         # Parse GPT response to extract the action id.
         action_id = parse_action_id(gpt_response)
-        print("\n")
-        print("Parsed action id:", action_id)
-        print("\n")
-        # print("\n-----------\n")a
+        print("\nParsed action id:", action_id, "\n")
         
         # Retrieve robot's current pose.
         agent_meta = controller.last_event.metadata["agent"]
         robot_x = agent_meta["position"].get("x", None)
-        robot_z = agent_meta["position"].get("z", None)  # using z for ground plane y-coordinate
+        robot_z = agent_meta["position"].get("z", None)  # using z for ground plane coordinate
         robot_yaw = agent_meta["rotation"].get("y", None)
         
-        
-
         # Log the current step.
         log_entry = {
             "time": elapsed_time,
@@ -333,7 +443,6 @@ def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, target_item
         elif action_id == 2:
             controller.step(action="RotateRight")
             controller.step(action="MoveAhead", moveMagnitude=0.1)
-            
             print("Executing action: Rotate Right.")
         elif action_id == 3:
             controller.step(action="RotateLeft")
@@ -343,14 +452,20 @@ def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, target_item
             print("Invalid action id. Defaulting to Rotate Left.")
             controller.step(action="RotateLeft")
         
-        print('\n')
+        step_count += 1
+        
+        # Save the current vision frame using the step_count as the filename.
+        frame_filename = f"save/{step_count}.png"
+        # Depending on your image type, if it's a NumPy array from controller.last_event.cv2img:
+        cv2.imwrite(frame_filename, controller.last_event.cv2img)
+        print(f"Saved vision frame as {frame_filename}")
         
         print(f"Robot x: {robot_x}, Robot z: {robot_z}")
         cv2.imshow("AI2-THOR", controller.last_event.cv2img)
         cv2.waitKey(int(1000))
-
         
         time.sleep(1)
+
 
 def parse_action_id(response_text):
     """
@@ -391,15 +506,14 @@ def _save_itemDF(itemDF, save_path):
 # ==========================
 def main():
     stepMagnitude = 0.5
+    
+    
     config = yaml.load(open('config.yaml'), Loader=yaml.FullLoader)
     api_key = config['OPENAI_KEY']
     gpt_model = config['OPENAI_CHAT_MODEL']
     
     itemColumns = ["name", "conf", "vizLoc", "glb3DLoc", "goalSimilarity", "searchPriority"]
     itemDF = pd.DataFrame(columns=itemColumns)
-    
-    goal = "food burning smell"
-    target_items = ["Microwave"]
     
     yolo_model = YOLO("models/YOLO/yolov8s.pt")
     
@@ -419,27 +533,76 @@ def main():
         fieldOfView=90
     )
     
-    # change the starting position
-    i = 0
+    # goal = "food burning smell"
+    # target_items = ["Microwave"]
+
+    goal = "garbage smell"
+    target_items = ["GarbageCan"]
     
-    actionID = [2,2,1,1,1,1,1]
-    while i<len(actionID):
-        if actionID[i] == 1:
-            controller.step(action="MoveAhead", moveMagnitude=0.5)
-            print("Executing action: Move Ahead.")
-        elif actionID[i] == 2:
-            controller.step(action="RotateRight")
-            controller.step(action="MoveAhead", moveMagnitude=0.1)
-            
-            print("Executing action: Rotate Right.")
-        elif actionID[i] == 3:
-            controller.step(action="RotateLeft")
-            controller.step(action="MoveAhead", moveMagnitude=0.1)
-            print("Executing action: Rotate Left.")
-        else:
-            print("Invalid action id. Defaulting to Rotate Left.")
-            controller.step(action="RotateLeft")
-        i += 1
+    
+    # Obtain current scene objects.
+    objects = controller.last_event.metadata["objects"]
+    sourcePos = get_objects_centers(objects, target_items)
+
+    # # Starting position 1
+    # controller.step(
+    #     action="Teleport",
+    #     position=dict(x=-1, y=0.9, z=1.5),
+    #     rotation=dict(x=0, y=0, z=0)
+    # )
+
+    # controller.step(
+    #     "MoveAhead",
+    #     moveMagnitude=0.01
+    # )
+    
+    # # Starting position 2
+    # controller.step(
+    #     action="Teleport",
+    #     position=dict(x=0, y=0.9, z=1.7),
+    #     rotation=dict(x=0, y=90, z=0)
+    # )
+    # controller.step(
+    #     "MoveAhead",
+    #     moveMagnitude=0.01
+    # )
+
+    # # Starting position 3
+    # controller.step(
+    #     action="Teleport",
+    #     position=dict(x=0.5, y=0.9, z=2),
+    #     rotation=dict(x=0, y=0, z=0),
+    # )
+
+    # controller.step(
+    #     "MoveAhead",
+    #     moveMagnitude=0.01
+    # )
+
+    # # Starting position 4
+    # controller.step(
+    #     action="Teleport",
+    #     position=dict(x=2, y=0.9, z=2),
+    #     rotation=dict(x=0, y=270, z=0),
+    # )
+
+    # controller.step(
+    #     "MoveAhead",
+    #     moveMagnitude=0.01
+    # )
+
+    # starting position 5
+    
+    controller.step(
+        action="Teleport",
+        position=dict(x=2, y=0.9, z=0),
+        rotation=dict(x=0, y=270, z=0),
+    )
+
+    controller.step(
+        "MoveAhead",
+        moveMagnitude=0.01
+    )
 
     auto_control(
         controller=controller,
@@ -447,11 +610,11 @@ def main():
         yolo_model=yolo_model,
         api_key=api_key,
         gpt_model=gpt_model,
-        target_items=target_items,
+        source_position=sourcePos,
         save_path="save/itemDF.csv",
         max_time=200,
         goal=goal,
-        dist_threshold=1.5,
+        dist_threshold=1.0,
         stepMagnitude=stepMagnitude
     )
 
