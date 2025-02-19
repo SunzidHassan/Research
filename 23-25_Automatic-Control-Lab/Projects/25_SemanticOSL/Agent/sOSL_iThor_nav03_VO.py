@@ -88,7 +88,7 @@ def get_field_value(x, z, sources, q_s=2000, D=1000, U=0, tau=1000, del_t=1, psi
             # Compute the rotated z coordinate (this incorporates advection if U != 0)
             rotated_z = -delta_x * math.sin(psi) + delta_z * math.cos(psi)
             
-            contribution = (q_s / (4 * math.pi * D * r)) * math.exp((-rotated_z * U) / (2 * D) - (r / lambd) * del_t)
+            contribution = (q_s / (4 * math.pi * D * r)) * math.exp((-rotated_z * U / (2 * D)) - ((r / lambd) * del_t))
         
         total += contribution
         
@@ -234,6 +234,7 @@ def payload(api_key, prompt, image, model="gpt-4o"):
     response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload).json()['choices'][0]['message']['content']
     return response
 
+
 def llmPrompt(delimiter, goal, actionDF_str, odor_concentration, prev_odor_concentration=0, step_count=0):
     
     """
@@ -241,7 +242,7 @@ def llmPrompt(delimiter, goal, actionDF_str, odor_concentration, prev_odor_conce
     """
     task = f"""
     Your task is to select the best action for a mobile robot to move towards the source of {goal}.
-    You are provided with an image an Action Table, and current and previous odor concentrations that summarizes the robot's current surroundings.
+    You are provided with an image an Action Table that summarizes the robot's current surroundings.
     
     The image includes:
     - Robot's current egocentric view.
@@ -250,16 +251,12 @@ def llmPrompt(delimiter, goal, actionDF_str, odor_concentration, prev_odor_conce
       - **Action**: The potential action (e.g., Move Forward, Rotate Left, Rotate Right).
       - **Obstacle**: Indicates if an obstacle is present ("Yes" or "No") in that direction.
 
-    The odor concentration includes:
-    - Integer value of current and past odor concentration.
     
     The rules are:
       1. Actions that lead to obstacle cannot be selected.
-      2. If odor concentration decreases after executing moveAhead, then Turn back.
-      3. If odor concentration increases after executing moveAhead, then repeat the previous action.
-      4. If the scene in front may contain an object related to the {goal}, the robot should move forward.
-      5. If the forward direction is blocked, or if the scene is unlikely to contain any object related to the {goal} in front, then consider turning left or right if that direction is clear.
-      6. Only one action should be selected.
+      2. If the scene in front may contain an object related to the {goal}, the robot should move forward.
+      3. If the forward direction is blocked, or if the scene is unlikely to contain any object related to the {goal} in front, then consider turning left or right if that direction is clear.
+      4. Only one action should be selected.
     """
     
     actionInstructions = """
@@ -281,11 +278,6 @@ def llmPrompt(delimiter, goal, actionDF_str, odor_concentration, prev_odor_conce
     Respond with the corresponding numerical value of the action (1, 2, 3) without any additional text or punctuation.
     """
     
-    olfactoryReading = f"""
-    Odor concentration at previous time step was: {prev_odor_concentration}
-    Odor Concentration at current time step is: {odor_concentration}
-    """
-    
     prompt = f"""
     {delimiter} Task:
     {task}
@@ -295,9 +287,29 @@ def llmPrompt(delimiter, goal, actionDF_str, odor_concentration, prev_odor_conce
     {actionDF_str}
     {delimiter} Output Instructions:
     {reasoningOutputInstructions}
-    {delimiter} Olfactory reading:
-    {olfactoryReading}
     """
+
+    
+    # if step_count == 0:
+    #     prompt = f"""
+    #     {delimiter} Task:
+    #     {task}
+    #     {delimiter} Available Actions:
+    #     {actionInstructions}
+    #     {delimiter} Current Action Table:
+    #     {actionDF_str}
+    #     {delimiter} Output Instructions:
+    #     {reasoningOutputInstructions}
+    #     {delimiter} Olfactory reading:
+    #     {olfactoryReading}
+    #     """
+    # else:
+    #     prompt = f"""
+    #     {delimiter} Olfactory reading:
+    #     {olfactoryReading}
+    #     """
+    
+    return prompt
 
     
     # if step_count == 0:
@@ -647,6 +659,7 @@ def main():
         "MoveAhead",
         moveMagnitude=0.01
     )
+
 
     auto_control(
         controller=controller,

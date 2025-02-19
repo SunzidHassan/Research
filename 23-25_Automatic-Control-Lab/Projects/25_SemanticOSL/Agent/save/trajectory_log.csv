@@ -1,6 +1,79 @@
-time,robot x,robot z,robot yaw,gpt decision
-0.000986337661743164,2.0,2.0,270.0,1
-4.841183662414551,1.5,2.0,270.0,1
-8.66051697731018,1.0,2.0,270.0,1
-12.132293224334717,0.5,2.0,270.0,1
-15.765300512313843,-0.0,2.0,270.0,1
+step,robot x,robot z,robot yaw,gpt decision,concentration,reasoning
+0,1.0,1.5,90.0,2,0.0271,"##### Reasoning:
+
+1. The odor concentration remained constant (0.0271 to 0.0271) from the previous to the current time step. Thus, there is no indication that moving forward is bringing the robot closer to the odor source.
+2. According to the rules, if the odor concentration remains the same after moving ahead, we should consider other potential movements.
+3. The image shows no obvious obstacle in front, and the Action Table states there are no obstacles in any direction.
+4. The rules state that if the odor remains constant, consider turning left or right if that direction is clear.
+5. As there are no obstacles, we can choose either to rotate left or right. For decision-making consistency, let's choose to rotate right.
+
+##### Selected Action: ##### 2"
+1,1.0,1.5,180.0,2,0.0271,"##### Reasoning:
+
+1. **Identify Obstacles:** 
+   - The action table indicates there is an obstacle if the robot moves forward. Thus, moving forward is not an option.
+
+2. **Odor Concentration Analysis:** 
+   - The previous and current odor concentrations are the same (0.0271), indicating no increase or decrease in the odor concentration.
+
+3. **Apply Rules:**
+   - Since moving forward is blocked, consider turning left or right, as they do not have obstacles in those directions.
+   - There is no information suggesting objects related to garbage smell in the current view.
+   - With both right and left being clear, either could be chosen. In the absence of any other indicators, a choice needs to be arbitrary.
+
+##### Selected Action:##### 2"
+2,1.0,1.5,270.0,1,0.0271,"##### Reasoning:
+
+1. **Obstacle Check**: According to the Action Table, there are no obstacles in any direction including forward.
+
+2. **Odor Concentration**: The odor concentration remains unchanged from the previous time step (0.0271).
+
+3. **Scene Analysis**: The image shows an environment (such as a kitchen) with a trash can, which could be a source of garbage smell. Moving forward could bring the robot closer to the odor source.
+
+4. **Action Selection**: Since moving forward does not have any obstacles and the scene in front likely contains an object related to the garbage smell, the robot should move forward to explore this possibility.
+
+##### Selected Action:##### 1"
+3,0.5,1.5,270.0,1,0.053,"##### Reasoning:
+
+1. **Check Obstacle in Forward Direction**: The Action Table indicates no obstacle for the Move Forward action.
+   
+2. **Odor Concentration Comparison**: The odor concentration has increased from 0.0271 to 0.053, suggesting moving forward is in the correct direction according to the rule.
+
+3. **Scene Analysis**: The image shows a garbage can, which is related to the source of the garbage smell, directly in front of the robot.
+
+4. **Select the Best Action**: Given the increased odor concentration and the presence of a garbage can, the best action is to move forward.
+
+##### Selected Action:##### 1"
+4,-0.0,1.5,270.0,1,0.107,"##### Reasoning:
+
+1. **Obstacle Check**: 
+   - From the Action Table, there is no obstacle in the forward direction.
+
+2. **Odor Concentration Analysis**: 
+   - The current odor concentration (0.107) is higher than the previous concentration (0.053), indicating progress towards the source of the garbage smell.
+
+3. **Previous Action Consideration**: 
+   - Per the rules, if the odor concentration increases after moving ahead, the robot should repeat the previous action, which implies continuing moving forward.
+
+4. **Visual Scene Analysis**: 
+   - The image suggests a scene likely containing an object related to the garbage smell (a trash can is visible).
+
+5. **Selection**:
+   - Based on the concentration increase and the presence of a trash can, moving forward is justified.
+
+##### Selected Action:##### 1"
+5,-0.5,1.5,270.0,1,0.226,"##### Reasoning:
+
+1. **Obstacle Check**: 
+   - There are no obstacles in any direction according to the Action Table.
+
+2. **Odor Concentration Increase**: 
+   - The odor concentration has increased from 0.107 to 0.226, indicating that moving forward is in the right direction.
+
+3. **Scene Analysis**: 
+   - The scene in the image includes what looks like a refrigerator, which is often associated with food and potential garbage smell.
+
+4. **Action Selection**: 
+   - Given the increase in odor concentration and the potential garbage-related object in front, the robot should move forward.
+
+##### Selected Action:##### 1"
