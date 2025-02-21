@@ -241,19 +241,20 @@ def llmPrompt(delimiter, goal, actionDF_str, odor_concentration, prev_odor_conce
     """
     task = f"""
     Your task is to select the best action for a mobile robot to move towards the source of {goal}.
-    You are provided with an image an Action Table that summarizes the robot's current surroundings.
+    You are provided with an Action Table, and current and previous odor concentrations that summarizes the robot's current surroundings.
     
-    The image includes:
-    - Robot's current egocentric view.
-
     The table includes:
       - **Action**: The potential action (e.g., Move Forward, Rotate Left, Rotate Right).
       - **Obstacle**: Indicates if an obstacle is present ("Yes" or "No") in that direction.
+
+    The odor concentration includes:
+    - Value of current and past odor concentration.
     
     The rules are:
-      1. If the scene may contain an object related to the {goal}, the robot should move forward.
-      2. If the forward direction is blocked, then turn to the side (Turn Left or Turn Right) that is obstacle free and the {goal} related object may be located.
-      3. Only one action should be selected.
+      1. Move forward if there is no obstacle in front.
+      3. If odor concentration decreases after executing moveAhead, then Turn back.
+      4. If the forward direction is blocked, then turn to the side (Turn Left or Turn Right) that is obstacle free.
+      5. Only one action should be selected.
     """
     
     actionInstructions = """
@@ -327,7 +328,9 @@ def gptNav(controller, api_key, gpt_model, goal, actionDF, source_position, step
     if prev_odor_concentration is None:
         prev_odor_concentration = current_odor_concentration
 
-
+    print(f"Prev Odor Concentration: {prev_odor_concentration}")
+    print(f"Current Odor Concentration: {current_odor_concentration}")
+    
     delimiter = "#####"
     prompt = llmPrompt(delimiter, goal, actionDF.to_string(index=False),
                         current_odor_concentration, prev_odor_concentration, step_count)

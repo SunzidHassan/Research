@@ -1,0 +1,94 @@
+step,robot x,robot z,robot yaw,gpt decision,concentration,reasoning
+0,1.0,1.5,90.0,1,0.0378,"The robot is currently facing an environment where it has an equal odor concentration reading at both the current and previous time steps (0.0378). This indicates that the odor concentration hasn't changed, suggesting no progress towards the source of the garbage smell.
+
+1. First, I check if the robot can move forward. According to the action table, moving forward is possible since there is no obstacle.
+2. Next, I consider the rules. The robot should move forward since it can do so without encountering an obstacle. Given the odor hasn't increased or decreased, we can't determine that it should turn back or change direction yet.
+
+Therefore, the best course of action is to proceed forward and see if it improves the odor concentration.
+
+Selected Action:##### 1"
+1,1.25,1.5,90.0,4,0.0271,"The robot's current surroundings indicate that there are no obstacles in any direction (front, left, right, or back). However, the odor concentration has decreased since the previous time step, which suggests that moving forward is no longer leading towards the source of the garbage smell.
+
+1. The robot can move forward since there is no obstacle, but the decrease in odor concentration indicates that moving ahead is ineffective.
+2. Since the decrease in concentration has occurred after moving forward, it would be wise to turn back instead of continuing in a direction that's leading away from the source of the smell.
+
+Given these considerations, the selected action is:
+
+Selected Action:##### 4"
+2,1.25,1.5,270.0,1,0.0271,"The robot's current environment indicates that there are no obstacles in the forward direction, allowing for movement without hindrance. The previous and current odor concentrations are the same (0.0271), suggesting that there is no reduction in the smell despite having potentially moved. This indicates the source of the smell may still be present.
+
+Following the rules:
+1. Rule 1 allows the robot to move forward since there is no obstacle in front.
+2. Although the odor concentration hasn't increased, it hasn't decreased either, suggesting that the source of the odor might still be in the vicinity.
+3. Since the forward direction is clear and other conditions permit it, Move Forward would be the most logical action.
+
+Therefore, the reasoning leads to the conclusion:
+
+Selected Action:##### 1"
+3,1.0,1.5,270.0,1,0.0378,"The robot is currently in a position where it can assess its surroundings. According to the provided action table, there are no obstacles in any direction, allowing for flexible movement options. 
+
+1. The robot's forward movement is unimpeded by obstacles. 
+2. The odor concentration indicates an increase from 0.0271 to 0.0378, suggesting that the robot is moving closer to the source of the garbage smell. 
+3. Given the absence of obstacles, the robot should prioritize moving forward to investigate the source of the smell further.
+4. There is no indication that a backtrack would be necessary, as the concentration of the odor has increased rather than decreased.
+
+Based on these considerations, the optimal action is to move forward.
+
+Selected Action:##### 1"
+4,0.75,1.5,270.0,1,0.053,"The robot should select its next action based on the provided guidelines, current action table, and olfactory readings.
+
+1. The current action table shows that there are no obstacles in any direction (forward, left, or right).
+2. The previous odor concentration (0.0378) was lower than the current concentration (0.053), indicating that the robot is moving closer to the source of the garbage smell.
+3. According to the rules, since there is no obstacle in front of the robot, and the odor concentration has increased after previous movements, it is most logical to move forward towards the source of the smell.
+
+Therefore, the best action for the robot in this scenario is to:
+
+Selected Action:##### 1"
+5,0.5,1.5,270.0,1,0.0749,"The robot currently displays no obstacles in any direction and has detected an increase in odor concentration from 0.053 to 0.0749. 
+
+##### Reasoning:
+1. The smell concentration increased, suggesting that the robot is moving closer to the source of the smell. This is consistent with rule 2, which states to move forward if the smell concentration may be linked to garbage.
+2. There are no obstacles reported in the forward direction according to the action table. Therefore, moving forward aligns with the rules and objectives.
+
+Based on this analysis, the selected action is:
+
+Selected Action:##### 1"
+6,0.25,1.5,270.0,1,0.107,"The odor concentration has increased from 0.0749 to 0.107, indicating that the robot is getting closer to the source of the garbage smell. Since there are no obstacles in the current action table for moving forward, and the rules dictate that the robot should move forward when there’s no obstacle in front, this is the best action to take to continue approaching the source of the odor.
+
+Selected Action:##### 1"
+7,-0.0,1.5,270.0,1,0.1544,"The robot has detected a significant increase in odor concentration, from 0.107 to 0.1544, indicating that it is moving closer to the source of the garbage smell. 
+
+##### Step-by-step reasoning:
+1. **Odor Change**: The increase in odor concentration suggests that the robot is getting closer to the source of the smell.
+2. **Current Obstacles**: According to the Action Table, moving forward is possible as there are no obstacles directly in front of the robot. 
+3. **Decision**: Since the increase in odor concentration implies that moving forward is beneficial, and there are no obstacles in that direction, the best option is to move forward.
+
+Selected Action:##### 1"
+8,-0.25,1.5,270.0,1,0.226,"The robot has detected an increase in odor concentration from 0.1544 to 0.226, indicating that it is moving closer to the source of the garbage smell. 
+
+1. The available actions include moving forward, turning right, turning left, or turning back.
+2. The action table shows that there is no obstacle in front, to the right, or to the left.
+3. Since the odor concentration has increased, it suggests that moving forward is indeed the right choice, aligning with the rules that state to move forward if there is no obstacle and the odor is increasing.
+4. Turning back is not an option since it would contradict the observation of increased odor concentration.
+5. Both turning left and right are valid options, but since moving forward does not have obstacles and correlates directly with the increased odor, it is the most effective action.
+
+Selected Action:##### 1"
+9,-0.5,1.5,270.0,1,0.3358,"The objective is to move towards the source of the garbage smell, following the given rules.
+
+1. The action table indicates that moving forward does not encounter any obstacles.
+2. The olfactory readings show an increase in odor concentration from 0.226 to 0.3358, which suggests that the robot is getting closer to the source of the garbage smell.
+3. Since there are no obstacles in front, and the smell has increased, moving forward is the best choice.
+
+Selected Action:##### 1"
+10,-0.75,1.5,270.0,1,0.5073,"The robot is currently facing a situation where the odor concentration has increased from 0.3358 to 0.5073, indicating that it is getting closer to the source of the garbage smell. Additionally, the action table shows that moving forward (Action ID = 1) is clear of obstacles.
+
+1. The robot checks its environment:
+   - The current action table indicates no obstacle is present in the forward direction.
+   
+2. Given that the odor concentration has increased, this suggests that the robot is moving correctly toward the source of the smell.
+
+3. The increase in odor concentration indicates that previous odors have not diminished, validating that it should continue to pursue the garbage smell by moving forward.
+
+4. According to the rules stated, since there’s no obstacle in front and the smell has increased, the best action for the robot is to move forward.
+
+Selected Action:##### 1"

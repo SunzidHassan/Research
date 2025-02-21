@@ -160,7 +160,7 @@ def obstacleTable(actionDF, controller, obstacle_threshold):
     Uses a central region to determine if there is an obstacle in front.
     """
     depth_frame = np.array(controller.last_event.depth_frame)
-    forward_region = depth_frame[250:280,100:200]  # central region for forward.
+    forward_region = depth_frame[280:300,100:200]  # central region for forward.
     forward_min = np.min(forward_region)
 
     Left_region = depth_frame[250:280,0:50]  # central region for forward.
@@ -251,21 +251,20 @@ def llmPrompt(delimiter, goal, actionDF_str, odor_concentration, prev_odor_conce
       - **Obstacle**: Indicates if an obstacle is present ("Yes" or "No") in that direction.
 
     The odor concentration includes:
-    - Integer value of current and past odor concentration.
+    - Value of current and past odor concentration.
     
     The rules are:
-      1. Actions that lead to obstacle cannot be selected.
-      2. If odor concentration decreases after executing moveAhead, then Turn back.
-      3. If odor concentration increases after executing moveAhead, then repeat the previous action.
-      4. If the scene in front may contain an object related to the {goal}, the robot should move forward.
-      5. If the forward direction is blocked, or if the scene is unlikely to contain any object related to the {goal} in front, then consider turning left or right if that direction is clear.
-      6. Only one action should be selected.
+      1. Move forward if there is no obstacle in front.
+      2. If the scene may contain an object related to the {goal}, the robot should move forward.
+      3. If odor concentration decreases after executing moveAhead, then Turn back.
+      4. If the forward direction is blocked, then turn to the side (Turn Left or Turn Right) that is obstacle free and the {goal} related object may be located.
+      5. Only one action should be selected.
     """
     
     actionInstructions = """
     Move forward. (Action_id = 1)
-    Rotate right. (Action_id = 2)
-    Rotate left. (Action_id = 3)
+    Turn right. (Action_id = 2)
+    Turn left. (Action_id = 3)
     Turn back. (Action_id = 4)
     """
     
@@ -413,7 +412,7 @@ def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, source_posi
         # itemDF = objDetector(itemDF, controller, yolo_model)
         # Build and update action table (only Action and Obstacle).
         actionDF = actionTable(itemDF, conf_thres=0.5)
-        actionDF = obstacleTable(actionDF, controller, obstacle_threshold=1.0)
+        actionDF = obstacleTable(actionDF, controller, obstacle_threshold=0.85)
         print("Updated Action Table:")
         print(actionDF.to_string(index=False))
         
@@ -456,8 +455,7 @@ def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, source_posi
             controller.step(action="MoveAhead", moveMagnitude=0.1)
             print("Executing action: Rotate Left.")
         elif action_id == 4:
-            controller.step(action="RotateLeft")
-            controller.step(action="RotateLeft")
+            controller.step(action="RotateLeft", degrees=180)
             controller.step(action="MoveAhead", moveMagnitude=0.1)
             print("Executing action: Turn Back.")
         else:
@@ -497,7 +495,7 @@ def parse_action_id(response_text):
         match = re.search(r"\d+", after_marker)
         if match:
             action_id = int(match.group())
-            if action_id in [1, 2, 3]:
+            if action_id in [1, 2, 3, 4]:
                 return action_id
     return 3
 
@@ -527,7 +525,7 @@ def _save_itemDF(itemDF, save_path):
 # MAIN FUNCTION
 # ==========================
 def main():
-    stepMagnitude = 0.5
+    stepMagnitude = 0.25
     
     
     config = yaml.load(open('config.yaml'), Loader=yaml.FullLoader)
@@ -557,20 +555,29 @@ def main():
     
     # goal = "food burning smell"
     # target_items = ["Microwave"]
-
+    
     goal = "garbage smell"
     target_items = ["GarbageCan"]
     
-    
-    # Obtain current scene objects.
     objects = controller.last_event.metadata["objects"]
     sourcePos = get_objects_centers(objects, target_items)
 
-    # # Starting position 1
+    # Obtain current scene objects.
+    if target_items == ['Microwave']:
+        x, y, z = sourcePos[0]
+        z += 0.5
+        sourcePos = np.array([[x, y, z]])
+    elif target_items == ['GarbageCan']:
+        x, y, z = sourcePos[0]
+        x += 0.25
+        sourcePos = np.array([[x, y, z]])
+        
+
+    # Starting position 1
     # controller.step(
     #     action="Teleport",
-    #     position=dict(x=-1, y=0.9, z=1.5),
-    #     rotation=dict(x=0, y=0, z=0)
+    #     position=dict(x=1.5, y=0.9, z=1.5),
+    #     rotation=dict(x=0, y=180, z=0)
     # )
 
     # controller.step(
@@ -578,6 +585,17 @@ def main():
     #     moveMagnitude=0.01
     # )
     
+    # # Starting position 1
+    # controller.step(
+    #     action="Teleport",
+    #     position=dict(x=-1.0, y=0.9, z=1.25),
+    #     rotation=dict(x=0, y=180, z=0)
+    # )
+
+    # controller.step(
+    #     "MoveAhead",
+    #     moveMagnitude=0.01
+    # )
     # # Starting position 2
     # controller.step(
     #     action="Teleport",
@@ -637,10 +655,11 @@ def main():
     #     moveMagnitude=0.01
     # )
 
+    # Garbage Start Pos 1: facing back to the garbage bin
     controller.step(
         action="Teleport",
-        position=dict(x=1, y=0.9, z=1.5),
-        rotation=dict(x=0, y=90, z=0),
+        position=dict(x=2, y=0.9, z=-1.5),
+        rotation=dict(x=0, y=270, z=0),
     )
 
     controller.step(
@@ -658,7 +677,7 @@ def main():
         save_path="save/itemDF.csv",
         max_time=200,
         goal=goal,
-        dist_threshold=1.1,
+        dist_threshold=0.9,
         stepMagnitude=stepMagnitude
     )
 
