@@ -168,11 +168,12 @@ def obstacleTable(actionDF, controller, obstacle_threshold):
     Right_region = depth_frame[250:280,250:300]  # central region for forward.
     Right_min = np.min(Right_region)
 
-    print(f'Forward min: {forward_min}, Left min: {Left_min}, Right min: {Right_min}, ')
+    print(f'Forward min: {forward_min}, Left min: {Left_min}, Right min: {Right_min}, \n')
+    print(f'Obstacle Threshold: {obstacle_threshold}\n')
     
-    left_obstacle = "Yes" if Left_min < 0.5 else "No"
+    left_obstacle = "Yes" if Left_min < 0.3 else "No"
     forward_obstacle = "Yes" if forward_min < obstacle_threshold else "No"
-    right_obstacle = "Yes"  if Right_min < 0.5 else "No"
+    right_obstacle = "Yes"  if Right_min < 0.3 else "No"
     back_obstacle = "No"
     
     for idx, row in actionDF.iterrows():
@@ -234,14 +235,14 @@ def payload(api_key, prompt, image, model="gpt-4o"):
     response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload).json()['choices'][0]['message']['content']
     return response
 
-def llmPrompt(delimiter, goal, actionDF_str, odor_concentration, prev_odor_concentration=0, step_count=0):
+def llmPrompt(delimiter, goal, actionDF_str, last_action, odor_concentration, prev_odor_concentration=0, step_count=0):
     
     """
     Generates a prompt for the GPT model to select one action from the action table.
     """
     task = f"""
     Your task is to select the best action for a mobile robot to move towards the source of {goal}.
-    You are provided with an image an Action Table, and current and previous odor concentrations that summarizes the robot's current surroundings.
+    You are provided with an image, an Action Table, the last selected action, and current and previous odor concentrations that summarizes the robot's current surroundings.
     
     The image includes:
     - Robot's current egocentric view.
@@ -250,15 +251,39 @@ def llmPrompt(delimiter, goal, actionDF_str, odor_concentration, prev_odor_conce
       - **Action**: The potential action (e.g., Move Forward, Rotate Left, Rotate Right).
       - **Obstacle**: Indicates if an obstacle is present ("Yes" or "No") in that direction.
 
+    The last action includes:
+    - The Action_id of the last action taken by the robot.
+
     The odor concentration includes:
     - Value of current and past odor concentration.
+    """
     
-    The rules are:
+    rlues_old = f"""
+    The rules are listed acoording to priority:
       1. Move forward if there is no obstacle in front.
       2. If the scene may contain an object related to the {goal}, the robot should move forward.
       3. If odor concentration decreases after executing moveAhead, then Turn back.
       4. If the forward direction is blocked, then turn to the side (Turn Left or Turn Right) that is obstacle free and the {goal} related object may be located.
-      5. Only one action should be selected.
+      5. If the last action was to turn (Action_id = 2 or 3), and the forward direction is blocked, then Turn Back.
+      6. Only one action should be selected.
+    """
+
+    guides = f"""
+      * Only one action should be selected.
+    """
+    
+    semanticAnalysis = f"""
+    Sequentially perform the following input analysis to select the best action:
+    * Visual Analysis: do you see an object that is a possible source for {goal}?
+        * If yes, list the most likely object's name.
+        * If yes, and the front is obstacle free, move forward.
+    * Olfactory Analysis: 
+        * If the sensed concentration decreases, turn back.
+        * If the sensed concentration increases and front is obstacle free, move forward. 
+        * If the sensed concentration stays the same, focus on visual and navigation analysis.
+    * Navigation Analysis:
+        * If the front is blocked, turn to the side that is obstacle free and is more likely to lead you to the possible {goal} related object.
+        * If the last action was to turn (Action_id = 2 or 3), and the forward direction is blocked, then Turn Back.
     """
     
     actionInstructions = """
@@ -270,32 +295,56 @@ def llmPrompt(delimiter, goal, actionDF_str, odor_concentration, prev_odor_conce
     
     reasoningOutputInstructions = f"""
     Your response should follow this format:
-    <reasoning>
-    (Provide a brief step-by-step explanation of your decision)
-    Selected Action:{delimiter} <Output only one Action_id as an integer>
-    Use {delimiter} to separate each step.
+    {delimiter} 
+    Visual Analysis:
+    <Visual analysis reasoning>
+    ...
+    {delimiter} 
+    Olfactiory Analysis:
+    <olfactory analysis reasoning>
+    ...
+    {delimiter}
+    Navigation Analysis:
+    <navigation analysis reasoning>
+    ...
+    {delimiter}
+    Selected Action:
+    <Output only one Action_id as an integer>
     """
 
     noReasoningOutputInstructions = f"""
     Respond with the corresponding numerical value of the action (1, 2, 3) without any additional text or punctuation.
     """
     
+    LastAction = f"Action_id at the previous time step was: {last_action}"
+    
     olfactoryReading = f"""
-    Odor concentration at previous time step was: {prev_odor_concentration}
-    Odor Concentration at current time step is: {odor_concentration}
+    Odor concentration at the previous time step was: {prev_odor_concentration}
+    Odor Concentration at the current time step is: {odor_concentration}
     """
     
     prompt = f"""
-    {delimiter} Task:
+    {delimiter} 
+    Task:
     {task}
-    {delimiter} Available Actions:
-    {actionInstructions}
-    {delimiter} Current Action Table:
-    {actionDF_str}
-    {delimiter} Output Instructions:
-    {reasoningOutputInstructions}
-    {delimiter} Olfactory reading:
+    {delimiter}
+    Olfactory reading:
     {olfactoryReading}
+    {delimiter}
+    Current Action Table:
+    {actionDF_str}
+    {delimiter}
+    Available Actions:
+    {actionInstructions}
+    {delimiter}
+    Last Action:
+    {LastAction}
+    {delimiter}
+    Step-by-step Analysis:
+    {semanticAnalysis}
+    {delimiter}
+    Output Reasoning:
+    {reasoningOutputInstructions}
     """
 
     
@@ -321,7 +370,7 @@ def llmPrompt(delimiter, goal, actionDF_str, odor_concentration, prev_odor_conce
     return prompt
 
 
-def gptNav(controller, api_key, gpt_model, goal, actionDF, source_position, step_count):
+def gptNav(controller, api_key, gpt_model, goal, actionDF, source_position, step_count, last_action):
     # Retrieve previous odor concentration from the function attribute, if it exists.
     prev_odor_concentration = getattr(gptNav, "prev_odor_concentration", None)
     
@@ -333,11 +382,11 @@ def gptNav(controller, api_key, gpt_model, goal, actionDF, source_position, step
         prev_odor_concentration = current_odor_concentration
 
     print(f"Prev Odor Concentration: {prev_odor_concentration}")
-    print(f"Current Odor Concentration: {current_odor_concentration}")
+    print(f"Current Odor Concentration: {current_odor_concentration}\n")
     
     delimiter = "#####"
     prompt = llmPrompt(delimiter, goal, actionDF.to_string(index=False),
-                        current_odor_concentration, prev_odor_concentration, step_count)
+                        last_action, current_odor_concentration, prev_odor_concentration, step_count)
     
     # Compress the current image.
     image_array = controller.last_event.frame
@@ -355,8 +404,9 @@ def gptNav(controller, api_key, gpt_model, goal, actionDF, source_position, step
 # AUTOMATIC CONTROL LOOP
 # ==========================
 
-
-def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, source_position, save_path="itemDF.csv", max_time=150, goal="food burning smell", dist_threshold=1.0, stepMagnitude=0.5):
+def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, source_position, 
+                 save_path="itemDF.csv", max_time=150, goal="", 
+                 dist_threshold=1.0, stepMagnitude=0.5):
     """
     Automatic control loop.
     Each iteration:
@@ -367,12 +417,13 @@ def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, source_posi
          If the distance is below dist_threshold, the loop terminates.
       5. Calls GPT to select the best action based solely on the attached (compressed) image.
          GPT will decide the action by analyzing the image.
-      6. Logs the time, robot position (x, y), robot yaw, and GPT decision.
+      6. Logs the time, robot position (x, z), robot yaw, and GPT decision.
     """
     
-    step_count = 0    
+    step_count = 1    
     start_time = time.time()
-    logDF = pd.DataFrame(columns=["step", "robot x", "robot z", "robot yaw", "gpt decision", "concentration", "reasoning"])
+    logDF = pd.DataFrame(columns=["step", "robot x", "robot z", "robot yaw", 
+                                  "gpt decision", "concentration", "front obstacle", "reasoning"])
     
     print("Automatic control active. Executing GPT-selected actions until timeout or target reached.")
     
@@ -381,54 +432,48 @@ def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, source_posi
         print("New Step")
         print("=============================\n")
         elapsed_time = time.time() - start_time
-        print(f"Steps: {step_count}/{40}")
-
-        # if elapsed_time > max_time:
-        #     print(f"\nTime limit of {max_time} seconds reached. Saving itemDF and log, then exiting.")
-        #     _save_itemDF(itemDF, save_path)
-        #     logDF.to_csv("save/trajectory_log.csv", index=False)
-        #     break
+        print(f"Steps: {step_count}/40")
         
-        if step_count > 40:
-            print(f"\nStep limit of {40} reached. Saving itemDF and log, then exiting.")
-            # _save_itemDF(itemDF, save_path)
-            logDF.to_csv("save/trajectory_log.csv", index=False)
-            break
-
+        # Evaluate sensor readings: compute minimum distance.
         if source_position.size > 0:
             distances = [get_distance_to_source(controller, center) for center in source_position]
             min_distance = min(distances)
         else:
             min_distance = float('inf')
-
+        
         print(f"Current minimum distance to target: {min_distance:.2f}")
-        if min_distance < dist_threshold:
-            print(f"Robot is within {dist_threshold} of the target. Mission accomplished!")
-            _save_itemDF(itemDF, save_path)
-            logDF.to_csv("save/trajectory_log.csv", index=False)
-            break
-
-        # Update vision.
-        # itemDF = objDetector(itemDF, controller, yolo_model)
-        # Build and update action table (only Action and Obstacle).
+        
+        # get current odor concentration
+        currentConcentration = olfactionBranch(source_position, controller)
+        
+        # Variable obstacle threshold
+        obstacle_threshold = np.interp(currentConcentration, [0, 0.3], [1, 0.6])
+        
+        # Build and update action table.
         actionDF = actionTable(itemDF, conf_thres=0.5)
-        actionDF = obstacleTable(actionDF, controller, obstacle_threshold=0.85)
+        actionDF = obstacleTable(actionDF, controller, obstacle_threshold)
         print("Updated Action Table:")
         print(actionDF.to_string(index=False))
         
-        # Call GPT navigation to select an action based solely on the (compressed) image.
-        gpt_response = gptNav(controller, api_key, gpt_model, goal, actionDF, source_position, step_count)
+        # Pass last action if available (for GPT context).
+        last_action = getattr(auto_control, "last_action", None)
+        
+        # Call GPT navigation to select an action.
+        gpt_response = gptNav(controller, api_key, gpt_model, goal, actionDF, 
+                               source_position, step_count, last_action)
         print("GPT response:", gpt_response)
         
-        # Parse GPT response to extract the action id.
+        # Parse the GPT response.
         action_id = parse_action_id(gpt_response)
         print("\nParsed action id:", action_id, "\n")
+        auto_control.last_action = action_id
         
         # Retrieve robot's current pose.
         agent_meta = controller.last_event.metadata["agent"]
         robot_x = agent_meta["position"].get("x", None)
         robot_z = agent_meta["position"].get("z", None)  # using z for ground plane coordinate
         robot_yaw = agent_meta["rotation"].get("y", None)
+        
         
         # Log the current step.
         log_entry = {
@@ -437,11 +482,14 @@ def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, source_posi
             "robot z": robot_z,
             "robot yaw": robot_yaw,
             "gpt decision": action_id,
-            "concentration": olfactionBranch(source_position, controller),
+            "concentration": currentConcentration,
+            "front obstacle": actionDF[actionDF["Action"] == "Forward"]["Obstacle"].values[0],
             "reasoning": gpt_response
         }
-        logDF = pd.concat([logDF, pd.DataFrame([log_entry])], ignore_index=True)
+        logDF = pd.concat([logDF, pd.DataFrame([log_entry], columns=logDF.columns)], 
+                          ignore_index=True)
         
+        stepMagnitude = np.interp(currentConcentration, [0, 0.3], [0.7, 0.25])
         # Map action id to a controller action.
         if action_id == 1:
             controller.step(action="MoveAhead", moveMagnitude=stepMagnitude)
@@ -462,11 +510,8 @@ def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, source_posi
             print("Invalid action id. Defaulting to Rotate Left.")
             controller.step(action="RotateLeft")
         
-        step_count += 1
-        
-        # Save the current vision frame using the step_count as the filename.
+        # Save the current vision frame.
         frame_filename = f"save/{step_count}.png"
-        # Depending on your image type, if it's a NumPy array from controller.last_event.cv2img:
         cv2.imwrite(frame_filename, controller.last_event.cv2img)
         print(f"Saved vision frame as {frame_filename}")
         
@@ -474,8 +519,21 @@ def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, source_posi
         cv2.imshow("AI2-THOR", controller.last_event.cv2img)
         cv2.waitKey(int(1000))
         
+        # Check termination condition AFTER logging the decision.
+        if min_distance < dist_threshold:
+            print(f"Robot is within {dist_threshold} of the target. Mission accomplished!")
+            logDF.to_csv("save/trajectory_log.csv", index=False)
+            break
+        
+        # Check step limit.
+        if step_count >= 40:
+            print(f"Step limit of 40 reached. Saving log and exiting.")
+            logDF.to_csv("save/trajectory_log.csv", index=False)
+            break
+        
+        step_count += 1
+        
         time.sleep(1)
-
 
 
 
@@ -553,10 +611,10 @@ def main():
         fieldOfView=90
     )
     
-    # goal = "food burning smell"
+    # goal = "smoke"
     # target_items = ["Microwave"]
     
-    goal = "garbage smell"
+    goal = "rotten smell"
     target_items = ["GarbageCan"]
     
     objects = controller.last_event.metadata["objects"]
@@ -573,7 +631,7 @@ def main():
         sourcePos = np.array([[x, y, z]])
         
 
-    # Starting position 1
+    # # Microwave Starting position 1
     # controller.step(
     #     action="Teleport",
     #     position=dict(x=1.5, y=0.9, z=1.5),
@@ -585,69 +643,36 @@ def main():
     #     moveMagnitude=0.01
     # )
     
-    # # Starting position 1
-    # controller.step(
-    #     action="Teleport",
-    #     position=dict(x=-1.0, y=0.9, z=1.25),
-    #     rotation=dict(x=0, y=180, z=0)
-    # )
-
-    # controller.step(
-    #     "MoveAhead",
-    #     moveMagnitude=0.01
-    # )
-    # # Starting position 2
-    # controller.step(
-    #     action="Teleport",
-    #     position=dict(x=0, y=0.9, z=1.7),
-    #     rotation=dict(x=0, y=90, z=0)
-    # )
-    # controller.step(
-    #     "MoveAhead",
-    #     moveMagnitude=0.01
-    # )
-
-    # # Starting position 3
-    # controller.step(
-    #     action="Teleport",
-    #     position=dict(x=0.5, y=0.9, z=2),
-    #     rotation=dict(x=0, y=0, z=0),
-    # )
-
-    # controller.step(
-    #     "MoveAhead",
-    #     moveMagnitude=0.01
-    # )
-
-    # # Starting position 4
-    # controller.step(
-    #     action="Teleport",
-    #     position=dict(x=2, y=0.9, z=2),
-    #     rotation=dict(x=0, y=270, z=0),
-    # )
-
-    # controller.step(
-    #     "MoveAhead",
-    #     moveMagnitude=0.01
-    # )
-
-    # starting position 5
-    
+    # # Microwave Starting position 2
     # controller.step(
     #     action="Teleport",
     #     position=dict(x=2, y=0.9, z=0),
-    #     rotation=dict(x=0, y=270, z=0),
+    #     rotation=dict(x=0, y=0, z=0)
     # )
 
     # controller.step(
     #     "MoveAhead",
     #     moveMagnitude=0.01
     # )
-
+    
+    # # Microwave Starting position 3
     # controller.step(
     #     action="Teleport",
-    #     position=dict(x=0, y=0.9, z=-1.5),
-    #     rotation=dict(x=0, y=270, z=0),
+    #     position=dict(x=-1, y=0.9, z=2),
+    #     rotation=dict(x=0, y=0, z=0)
+    # )
+
+    # controller.step(
+    #     "MoveAhead",
+    #     moveMagnitude=0.01
+    # )
+    
+    
+    # # Garbage Start Pos 1: facing back to the garbage bin
+    # controller.step(
+    #     action="Teleport",
+    #     position=dict(x=1.5, y=0.9, z=2),
+    #     rotation=dict(x=0, y=90, z=0),
     # )
 
     # controller.step(
@@ -655,11 +680,24 @@ def main():
     #     moveMagnitude=0.01
     # )
 
-    # Garbage Start Pos 1: facing back to the garbage bin
+    # # Garbage Start Pos 2: upper left corner
+    # controller.step(
+    #     action="Teleport",
+    #     position=dict(x=2, y=0.9, z=-1.5),
+    #     rotation=dict(x=0, y=180, z=0),
+    # )
+
+    # controller.step(
+    #     "MoveAhead",
+    #     moveMagnitude=0.01
+    # )
+
+
+    # Garbage Start Pos 3:
     controller.step(
         action="Teleport",
-        position=dict(x=2, y=0.9, z=-1.5),
-        rotation=dict(x=0, y=270, z=0),
+        position=dict(x=-1, y=0.9, z=-1.5),
+        rotation=dict(x=0, y=90, z=0),
     )
 
     controller.step(
@@ -677,7 +715,7 @@ def main():
         save_path="save/itemDF.csv",
         max_time=200,
         goal=goal,
-        dist_threshold=0.9,
+        dist_threshold=0.8,
         stepMagnitude=stepMagnitude
     )
 

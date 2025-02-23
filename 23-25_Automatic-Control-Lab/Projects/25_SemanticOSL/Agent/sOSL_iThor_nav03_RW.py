@@ -10,6 +10,7 @@ import io
 from PIL import Image
 import cv2
 import re
+import random
 
 from ai2thor.controller import Controller
 from ultralytics import YOLO
@@ -168,7 +169,8 @@ def obstacleTable(actionDF, controller, obstacle_threshold):
     Right_region = depth_frame[250:280,250:300]  # central region for forward.
     Right_min = np.min(Right_region)
 
-    print(f'Forward min: {forward_min}, Left min: {Left_min}, Right min: {Right_min}, ')
+    print(f'Forward min: {forward_min}, Left min: {Left_min}, Right min: {Right_min}, \n')
+    print(f'Obstacle Threshold: {obstacle_threshold}\n')
     
     left_obstacle = "Yes" if Left_min < 0.5 else "No"
     forward_obstacle = "Yes" if forward_min < obstacle_threshold else "No"
@@ -241,7 +243,7 @@ def llmPrompt(delimiter, goal, actionDF_str, last_action, odor_concentration, pr
     """
     task = f"""
     Your task is to select the best action for a mobile robot to move towards the source of {goal}.
-    You are provided with an image, an Action Table, the last selected action that summarizes the robot's current surroundings.
+    You are provided with an image, an Action Table, the last selected action, and current and previous odor concentrations that summarizes the robot's current surroundings.
     
     The image includes:
     - Robot's current egocentric view.
@@ -253,6 +255,8 @@ def llmPrompt(delimiter, goal, actionDF_str, last_action, odor_concentration, pr
     The last action includes:
     - The Action_id of the last action taken by the robot.
 
+    The odor concentration includes:
+    - Value of current and past odor concentration.
     """
     
     rlues_old = f"""
@@ -274,6 +278,10 @@ def llmPrompt(delimiter, goal, actionDF_str, last_action, odor_concentration, pr
     * Visual Analysis: do you see an object that is a possible source for {goal}?
         * If yes, list the most likely object's name.
         * If yes, and the front is obstacle free, move forward.
+    * Olfactory Analysis: 
+        * If the sensed concentration decreases, turn back.
+        * If the sensed concentration increases and front is obstacle free, move forward. 
+        * If the sensed concentration stays the same, focus on visual and navigation analysis.
     * Navigation Analysis:
         * If the front is blocked, turn to the side that is obstacle free and is more likely to lead you to the possible {goal} related object.
         * If the last action was to turn (Action_id = 2 or 3), and the forward direction is blocked, then Turn Back.
@@ -291,6 +299,10 @@ def llmPrompt(delimiter, goal, actionDF_str, last_action, odor_concentration, pr
     {delimiter} 
     Visual Analysis:
     <Visual analysis reasoning>
+    ...
+    {delimiter} 
+    Olfactiory Analysis:
+    <olfactory analysis reasoning>
     ...
     {delimiter}
     Navigation Analysis:
@@ -316,6 +328,9 @@ def llmPrompt(delimiter, goal, actionDF_str, last_action, odor_concentration, pr
     {delimiter} 
     Task:
     {task}
+    {delimiter}
+    Olfactory reading:
+    {olfactoryReading}
     {delimiter}
     Current Action Table:
     {actionDF_str}
@@ -367,6 +382,9 @@ def gptNav(controller, api_key, gpt_model, goal, actionDF, source_position, step
     if prev_odor_concentration is None:
         prev_odor_concentration = current_odor_concentration
 
+    print(f"Prev Odor Concentration: {prev_odor_concentration}")
+    print(f"Current Odor Concentration: {current_odor_concentration}\n")
+    
     delimiter = "#####"
     prompt = llmPrompt(delimiter, goal, actionDF.to_string(index=False),
                         last_action, current_odor_concentration, prev_odor_concentration, step_count)
@@ -406,7 +424,7 @@ def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, source_posi
     step_count = 1    
     start_time = time.time()
     logDF = pd.DataFrame(columns=["step", "robot x", "robot z", "robot yaw", 
-                                  "gpt decision", "concentration", "reasoning"])
+                                  "gpt decision", "concentration", "front obstacle", "reasoning"])
     
     print("Automatic control active. Executing GPT-selected actions until timeout or target reached.")
     
@@ -415,7 +433,7 @@ def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, source_posi
         print("New Step")
         print("=============================\n")
         elapsed_time = time.time() - start_time
-        print(f"Steps: {step_count}/60")
+        print(f"Steps: {step_count}/40")
         
         # Evaluate sensor readings: compute minimum distance.
         if source_position.size > 0:
@@ -426,9 +444,15 @@ def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, source_posi
         
         print(f"Current minimum distance to target: {min_distance:.2f}")
         
+        # get current odor concentration
+        currentConcentration = olfactionBranch(source_position, controller)
+        
+        # Variable obstacle threshold
+        obstacle_threshold = np.interp(currentConcentration, [0, 0.3], [1, 0.7])
+        
         # Build and update action table.
         actionDF = actionTable(itemDF, conf_thres=0.5)
-        actionDF = obstacleTable(actionDF, controller, obstacle_threshold=0.7)
+        actionDF = obstacleTable(actionDF, controller, obstacle_threshold)
         print("Updated Action Table:")
         print(actionDF.to_string(index=False))
         
@@ -436,12 +460,16 @@ def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, source_posi
         last_action = getattr(auto_control, "last_action", None)
         
         # Call GPT navigation to select an action.
-        gpt_response = gptNav(controller, api_key, gpt_model, goal, actionDF, 
-                               source_position, step_count, last_action)
-        print("GPT response:", gpt_response)
+        # gpt_response = gptNav(controller, api_key, gpt_model, goal, actionDF, 
+        #                        source_position, step_count, last_action)
+        # print("GPT response:", gpt_response)
         
         # Parse the GPT response.
-        action_id = parse_action_id(gpt_response)
+        if actionDF[actionDF["Action"] == "Forward"]["Obstacle"].values[0] == "Yes":
+            action_id = action_id = random.randint(2, 4)
+        else:
+            action_id = 1
+        
         print("\nParsed action id:", action_id, "\n")
         auto_control.last_action = action_id
         
@@ -451,6 +479,7 @@ def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, source_posi
         robot_z = agent_meta["position"].get("z", None)  # using z for ground plane coordinate
         robot_yaw = agent_meta["rotation"].get("y", None)
         
+        
         # Log the current step.
         log_entry = {
             "step": step_count,
@@ -458,12 +487,14 @@ def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, source_posi
             "robot z": robot_z,
             "robot yaw": robot_yaw,
             "gpt decision": action_id,
-            "concentration": olfactionBranch(source_position, controller),
-            "reasoning": gpt_response
+            "concentration": currentConcentration,
+            "front obstacle": actionDF[actionDF["Action"] == "Forward"]["Obstacle"].values[0],
+            "reasoning": "No reasoning available."
         }
         logDF = pd.concat([logDF, pd.DataFrame([log_entry], columns=logDF.columns)], 
                           ignore_index=True)
         
+        stepMagnitude = 0.5
         # Map action id to a controller action.
         if action_id == 1:
             controller.step(action="MoveAhead", moveMagnitude=stepMagnitude)
@@ -508,7 +539,6 @@ def auto_control(controller, itemDF, yolo_model, api_key, gpt_model, source_posi
         step_count += 1
         
         time.sleep(1)
-
 
 
 def parse_action_id(response_text):
@@ -645,7 +675,7 @@ def main():
     # # Garbage Start Pos 1: facing back to the garbage bin
     # controller.step(
     #     action="Teleport",
-    #     position=dict(x=1.5, y=0.9, z=2),
+    #     position=dict(x=1.5, y=0.9, z=0),
     #     rotation=dict(x=0, y=90, z=0),
     # )
 
@@ -670,7 +700,7 @@ def main():
     # # Garbage Start Pos 3:
     # controller.step(
     #     action="Teleport",
-    #     position=dict(x=-1, y=0.9, z=-1.5),
+    #     position=dict(x=-0.5, y=0.9, z=-1.5),
     #     rotation=dict(x=0, y=90, z=0),
     # )
 
