@@ -16,6 +16,7 @@
   - [Neural Fields in Robotics](#neural-fields-in-robotics)
     - [NeRF in Robotics Survey](#nerf-in-robotics-survey)
     - [Planning/Navigation](#planningnavigation)
+  - [Drone Navigation](#drone-navigation)
 
 ---
 
@@ -236,3 +237,12 @@ Multimodal sensor fusion:
 ### Planning/Navigation
 
 * **NeRF-Navigation**: "Vision-Only Robot Navigation in a Neural Radiance World.", CONFERENCE, YEAR. [[Paper](https://mikh3x4.github.io/nerf-navigation/assets/NeRF_Navigation.pdf)] [[PyTorch Code](https://github.com/mikh3x4/nerf-navigation)] [[Website](https://mikh3x4.github.io/nerf-navigation/)]
+
+
+---
+
+## Drone Navigation
+* **VO-Safe**: "Reinforcement Learning for Drone Navigation.", 
+ "Vision-Only Robot Navigation in a Neural Radiance World.", ICRA, 2024. [[Paper](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=10611487)]
+
+        Due to abscence of ground truth position value in realworld, VO is used for pose-estimation. Visual Odometry (VO) based drone localisation with hierarchical control: RGB camera > VO module (>pose estimation) & classifier (semantic segmented image )> RL (PPO) (>select one of 8 action) > low-level non-learning-based controller. VO performance feedback punishment added in RL. Semantic scene instead of raw image for minimizing sim-to-real gap.
