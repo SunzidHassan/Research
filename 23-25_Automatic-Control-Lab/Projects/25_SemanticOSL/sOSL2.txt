@@ -1,0 +1,16 @@
+Vision branch: RGBD > environment knowledge.
+- Object Detection using YOLO.
+- 3D coordinate of the detected objects: using YOLO bounding box coordinate, 90th percentile depth (instead of midpoint), robot position/orientation, camera parameters.
+- Environment knowledge: storing 3D object points.
+
+Olfaction branch: odor semantic and concentration.
+- 2D odor dispersion model > turbulent concentration.
+- E-nose chemical mix (VOC, CO, CO2, etc.) > lookup odor semantics.
+
+Fusion - 2 behaviors: exploration and OSL
+- Exploration: visit unseen parts of the environment to update environment knowledge.
+- OSL: if odor concentration > threshold
+- Calculate cosine similarity of the detected odor type to the objects in environment knowledge. Generate a sorted list of object coordinates to visit.
+- Localize the top object – if odor concentration decreases while moving towards it, localize the second object, and so on.
+- Source declaration: if the robot reaches within a threshold of the object, while odor detection keeps on rising.
+- Point-goal navigation while avoiding obstacles: RL or path planning for action selection > low-level controller for execution.
