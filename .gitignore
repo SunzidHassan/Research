@@ -13,6 +13,11 @@
 23-25_Automatic-Control-Lab/Projects/25_SemanticOSL/Agent/__pycache__
 23-25_Automatic-Control-Lab/Projects/25_SemanticOSL/Agent/config.yaml
 
+23-25_Automatic-Control-Lab/Projects/25_SemanticOSL/Agent2/models
+23-25_Automatic-Control-Lab/Projects/25_SemanticOSL/Agent2/save
+23-25_Automatic-Control-Lab/Projects/25_SemanticOSL/Agent2/__pycache__
+23-25_Automatic-Control-Lab/Projects/25_SemanticOSL/Agent2/config.yaml
+
 # Log files
 *.log
 .Rproj.user
