@@ -176,120 +176,6 @@ def olfactionBranch(sourcePos, controller,
     plumeConcentration = round(get_field_value(robot_x, robot_z, sourcePos, q_s=q_s, D=D, U=U, tau=tau, del_t=del_t, psi_deg=psi_deg),4)
     return plumeConcentration
 
-def boxDepth(x, y, w, h, controller):
-    vMin = y - h//2
-    vMax = y + h//2
-    hMin = x - w//2
-    hMax = x + w//2
-    depthFrame = controller.last_event.depth_frame
-    boxDepth = np.percentile(depthFrame[vMin:vMax, hMin:hMax], 90)
-    return round(boxDepth, 1)
-
-
-def rotate_point(x_cam, z_cam, yaw_deg):
-    # Convert yaw angle to radians.
-    yaw_rad = np.deg2rad(yaw_deg)
-    # Build the rotation matrix for yaw.
-    R = np.array([[np.cos(yaw_rad), -np.sin(yaw_rad)],
-                  [np.sin(yaw_rad),  np.cos(yaw_rad)]])
-    rotated = R.dot(np.array([x_cam, z_cam]))
-    return rotated[0], rotated[1]
-
-def coord23D(x, y, w, h, controller):
-    image_width = 300  # controller.last_event.frame.shape[1]
-    image_height = 300 # controller.last_event.frame.shape[0]
-    h_fov = v_fov = 90
-    
-    center_u = image_width / 2.0  # 150
-    center_v = image_height / 2.0  # 150
-
-    # Angular resolution: degrees per pixel.
-    angle_per_pixel_h = (h_fov / 2.0) / center_u  # 0.3 degrees per pixel
-    angle_per_pixel_v = (v_fov / 2.0) / center_v    # 0.3 degrees per pixel
-
-    # Angular offsets from the center (in degrees).
-    theta_h_deg = (x - center_u) * angle_per_pixel_h
-    theta_v_deg = (y - center_v) * angle_per_pixel_v
-
-    # Convert angles to radians.
-    theta_h = np.deg2rad(theta_h_deg)
-    theta_v = np.deg2rad(theta_v_deg)
-
-    # Compute the depth of the object.
-    d = boxDepth(x, y, w, h, controller)
-    
-    # Compute 3D coordinates in the camera frame.
-    # Using the convention: optical axis is z, x is to the right, and y is upward.
-    x_cam = d * np.sin(theta_h) * np.cos(theta_v)
-    y_cam = d * np.sin(theta_v)  # if image v increases downward, you might need to flip sign
-    z_cam = d * np.cos(theta_h) * np.cos(theta_v)
-    
-    # Incorporate robot's rotation:
-    robot_yaw_deg = controller.last_event.metadata["agent"]["rotation"]["y"]
-    # Rotate x_cam and z_cam from the camera frame to align with global axes.
-    x_rot, z_rot = rotate_point(x_cam, z_cam, robot_yaw_deg)
-
-    # Compute global coordinates by applying the robot's global position.
-    x_global = controller.last_event.metadata["agent"]["position"]["x"] - x_rot
-    y_global = controller.last_event.metadata["agent"]["position"]["y"] - y_cam
-    z_global = controller.last_event.metadata["agent"]["position"]["z"] - z_rot
-    
-    return x_global, y_global, z_global
-
-
-def visionBranch(model, itemDF, controller, confThr=0.1):
-    """
-    Updates itemDF with YOLO object detection results and depth estimation.
-    
-    For each detection:
-      - Compute the 3D coordinate (via coord23D).
-      - If an object with the same type exists in itemDF, check its position.
-        If the Euclidean distance is less than 0.5, update that entry by averaging the positions.
-      - Otherwise, append a new row.
-    """
-   
-    results = model(np.array(controller.last_event.frame))
-    
-    for box in results[0].boxes:
-        # Get xywh coordinates and confidence from the detection.
-        x, y, w, h = box.xywh[0]
-        confidence = box.conf[0].item()  # Convert confidence from tensor to float.
-        if confidence > confThr:
-            # Get the actual object name using the model's names dictionary.
-            className = model.names[int(box.cls[0].item())]
-            x, y, w, h = round(x.item()), round(y.item()), round(w.item()), round(h.item())
-            
-            # Compute the global 3D coordinate for this detection.
-            x_cam, y_cam, z_cam = coord23D(x, y, w, h, controller)
-            new_position = np.array([x_cam, y_cam, z_cam])
-            
-            updated = False
-            # Check if an entry with the same object type already exists in itemDF.
-            for idx, row in itemDF.iterrows():
-                if row['objectType'] == className:
-                    # Convert the stored string "x, y, z" to a numpy array.
-                    existing_position = np.array([float(val.strip()) for val in row['Position'].split(',')])
-                    # Compute the Euclidean distance.
-                    dist = np.linalg.norm(new_position - existing_position)
-                    if dist < 0.5:
-                        # Average the two positions.
-                        avg_position = (new_position + existing_position) / 2.0
-                        itemDF.at[idx, 'Position'] = f"{avg_position[0]}, {avg_position[1]}, {avg_position[2]}"
-                        updated = True
-                        break
-            # If no similar object exists, append a new entry.
-            if not updated:
-                new_row = pd.DataFrame({
-                    "objectType": [className],
-                    "Conf": [confidence],
-                    "Position": [f"{x_cam}, {y_cam}, {z_cam}"]
-                })
-                itemDF = pd.concat([itemDF, new_row], ignore_index=True)
-                
-    return itemDF
-
-
-
 # ==========================
 # CONTROL LOOP
 # ==========================
@@ -383,22 +269,25 @@ def add_goal_similarity(table, goal_phrase):
     table.sort(key=lambda x: x["Conf"] * x["goalSim"], reverse=True)
     return table
 
+
 def fusion_control(controller, itemDF, yolo_model, source_position, 
-                   save_path="itemDF.csv", step_threshold=50, max_time=150, goal_phrase="", 
-                   dist_threshold=1.0, stepMagnitude=0.5):
+                 save_path="itemDF.csv", step_threshold = 50, max_time=150, goal_phrase="", 
+                 dist_threshold=1.0, stepMagnitude=0.5):
     """
     Automatic control loop.
     Each iteration:
-      - Vision branch provides environment knowledge (object detections with 3D coordinates and goal similarity).
-      - Olfaction branch provides odor concentration.
-      - Fusion branch combines vision and olfaction data.
-          * Approach the object with highest goal similarity.
-          * If odor concentration decreases while distance to the object decreases,
-            discard that object and approach the next best target.
-          * Otherwise, if the robot reaches within a threshold distance to the object, terminate.
-      - Logs the time, robot position (x, z), robot yaw, etc.
+    - Vision branch provides environment knowledge.
+        - List of objects, detection confidence, 3D location and goal similarity.
+    - Olfaction branch provides odor concentration.
+    - Fusion branch combines vision and olfaction data.
+        - Approach the object with highest goal similarity.
+        - If odor concentration decreases while distance to the object decreaes,
+        discard the object and approach the object with second highest goal similarity.
+        - Otherwise, if the robot reaches within a threshold distance to the object,
+        terminate the loop.
+    - Logs the time, robot position (x, z), robot yaw...
     """
-
+    
     step_count = 1    
     start_time = time.time()
     logDF = pd.DataFrame(columns=["step", "robot_x", "robot_z", "robot_yaw", 
@@ -406,110 +295,116 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
     
     print("Fusion control active. Executing actions until timeout or target reached.")
     
-    # Get reachable positions and generate a graph of reachable positions.
+    # ========================== #
+    ## Vision Branch: environment knowledge -> coordiante
+    # Get environment knowledge
+    envKnowledge = extract_object_table(controller)
+    navKnowledge = add_goal_similarity(envKnowledge, goal_phrase)
+    
+    # Get reachable positions
     positions = controller.step(action="GetReachablePositions").metadata["actionReturn"]
+    # Generate a graph of rechable positions
     graph = create_graph_from_positions(positions, threshold=0.3)
-
-    # Initialize previous odor concentration for later comparisons.
-    fusion_control.prev_odor_concentration = None
 
     while True:
         print("\n=============================")
         print("New Step")
         print("=============================\n")
+        # elapsed_time = time.time() - start_time
         print(f"Steps: {step_count}/{step_threshold}")
 
-        # ========================== #
-        ## Vision Branch: update environment knowledge
-        # Update itemDF with new detections.
-        itemDF = visionBranch(yolo_model, itemDF, controller)
-        print("Updated itemDF (environment knowledge):")
-        print(itemDF)
-
-        # Convert the DataFrame to a list of dictionaries for goal similarity.
-        envKnowledge = itemDF.to_dict('records')
-        if envKnowledge:  
-            navKnowledge = add_goal_similarity(envKnowledge, goal_phrase)
-            print("Navigation Knowledge (sorted by goal similarity):")
-            print(navKnowledge)
-        else:
-            navKnowledge = []
-            print("No objects detected in vision branch.")
 
         # ========================== #
-        ## Ground truth: distance to source position.
+        ## Ground truth measurements
+        
+        # Ground truth distance to source position
         if source_position.size > 0:
             distances = [get_distance_to_source(controller, center) for center in source_position]
             min_distance = min(distances)
         else:
             min_distance = float('inf')
+
         print(f"Current minimum distance to target: {min_distance:.2f}")
 
-        # Termination condition.
+        # Check termination condition AFTER logging the decision.
         if min_distance < dist_threshold:
             print(f"Robot is within {dist_threshold} of the target. Mission accomplished!")
             logDF.to_csv("save/trajectory_log.csv", index=False)
             break
         
+        # Check step limit.
         if step_count >= step_threshold:
             print(f"Step limit of {step_threshold} reached. Saving log and exiting.")
             logDF.to_csv("save/trajectory_log.csv", index=False)
             break
-
+        
         # Retrieve robot's current pose.
         agent_meta = controller.last_event.metadata["agent"]
         robot_x = agent_meta["position"].get("x", None)
-        robot_z = agent_meta["position"].get("z", None)  # ground plane coordinate
+        robot_z = agent_meta["position"].get("z", None)  # using z for ground plane coordinate
         robot_yaw = agent_meta["rotation"].get("y", None)
         
         # ========================== #
-        ## Olfaction Branch: odor concentration
+        ## Olfaction Branch: robot coordinate -> odor concentration
+
+        # get current odor concentration
         current_odor_concentration = olfactionBranch(source_position, controller)
-        prev_odor_concentration = fusion_control.prev_odor_concentration
+        
+        prev_odor_concentration = getattr(fusion_control, "prev_odor_concentration", None)
+        
+        # If no previous value exists, initialize it.
         if prev_odor_concentration is None:
-            prev_odor_concentration = current_odor_concentration
+           prev_odor_concentration = current_odor_concentration
+
         print(f"Prev Odor Concentration: {prev_odor_concentration}")
         print(f"Current Odor Concentration: {current_odor_concentration}\n")
     
         # ========================== #
         ## Log output
+            
+        # Log the current step.
         log_entry = {
             "step": step_count,
             "robot_x": robot_x,
             "robot_z": robot_z,
             "robot_yaw": robot_yaw,
-            "concentration": current_odor_concentration,
-            "target_object": navKnowledge[0]["objectType"] if navKnowledge else "None"
+            "concentration": current_odor_concentration
         }
         logDF = pd.concat([logDF, pd.DataFrame([log_entry], columns=logDF.columns)], 
                           ignore_index=True)
         
+        # # Implement variable step magnitude based on current concentration
+        # stepMagnitude = np.interp(current_odor_concentration, [0, 0.3], [0.7, 0.25])
+
+
         # ========================== #
-        ## Navigation: select target and move.
+        ## Navigation
+
+
         source_pos = controller.last_event.metadata["agent"]["position"]
-        # Use the highest goal similarity object (first in sorted navKnowledge).
-        if navKnowledge:
-            target_pos = parse_position_string(navKnowledge[0]["Position"])
-            print(f"Target object: {navKnowledge[0]['objectType']}")
-        else:
-            print("No navigation target available. Exiting loop.")
-            break
+        target_pos = parse_position_string(navKnowledge[0]["Position"])
+        print(f"Target object: {navKnowledge[0]['objectType']}")
         
         start_node, src_dist = find_nearest_node(graph, source_pos)
         target_node, tgt_dist = find_nearest_node(graph, target_pos)
 
+        # Compute the shortest path from start to end nodes
         path_nodes = nx.dijkstra_path(graph, source=start_node, target=target_node, weight='weight')
-        path_positions = [graph.nodes[node]['pos'] for node in path_nodes]
-        try: 
-            pos = path_positions[1]  # next position to move to
-        except: 
-            pos = path_positions[0]
         
+        path_positions = [graph.nodes[node]['pos'] for node in path_nodes]
+        
+        try: pos = path_positions[1] # Next position to move to
+        except: pos = path_positions[0] # If no path, stay at the current position
+        
+        # Assume robot_x, robot_y, robot_z and robot_yaw are current values.
         robot_pos = np.array([robot_x, robot_z])
-        next_pos = np.array([pos[0], pos[2]])  # using pos[2] for z coordinate
+        next_pos = np.array([pos[0], pos[2]])  # use pos[2] for z coordinate
 
         dir_vector = next_pos - robot_pos
+
+        # Compute target yaw (0° is along +z)
         target_yaw = math.degrees(math.atan2(dir_vector[0], dir_vector[1]))
+
         relative_yaw = target_yaw - robot_yaw
         if relative_yaw < -180:
             relative_yaw += 360
@@ -518,69 +413,62 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
 
         print(f"Relative yaw: {relative_yaw:.2f}")
 
-        # Rotate towards target.
+        # Rotate towards the target yaw
         if relative_yaw > 0:
             controller.step("RotateRight")
         elif relative_yaw < 0:
             controller.step("RotateLeft")
+
         print(f"Rotated to target yaw: {target_yaw:.2f}")
 
         try:
+            # Move towards the target position
             controller.step(
                 action="Teleport",
                 position=dict(x=pos[0], y=pos[1], z=pos[2]),
-                rotation=dict(x=0, y=target_yaw, z=0)
+                rotation=dict(x=0, y=target_yaw, z=0)  # explicitly set rotation
             )
             print(f"Teleported to: x={pos[0]:.2f}, y={pos[1]:.2f}, z={pos[2]:.2f}")
+            
             step_count += 1
 
-            # If odor concentration decreases, drop the current top navigation target.
+            # Check if odor concentration is increasing
             if current_odor_concentration < prev_odor_concentration:
-                print("Odor concentration decreased. Changing target.")
+                print("Concentration decreased. Change target.")
+                    # Drop the top row from navKnowledge if it exists.
                 if navKnowledge:
                     navKnowledge.pop(0)
-            else:
-                print("Odor concentration increased. Continuing with current target.")
-        except Exception as e:
-            print("Teleportation error:", e)
+            else: print("Concentration increased. Continue.")
+        except: 
+            print("Teleoportation error")
             break
-
-        # Update previous odor concentration for next iteration.
+        
+        # Save the current odor concentration as the previous one for the next call.
         fusion_control.prev_odor_concentration = current_odor_concentration
 
-        time.sleep(0.1)
-
+        # Save the current vision frame.
+        # frame_filename = f"save/{step_count}.png"
+        # cv2.imwrite(frame_filename, controller.last_event.cv2img)
+        # print(f"Saved vision frame as {frame_filename}")
         
-
-def round_itemDF(df):
-    """
-    Returns a copy of the DataFrame with all float values (and those in lists/tuples)
-    rounded to 2 decimal places.
-    """
-    def round_cell(x):
-        if isinstance(x, float):
-            return round(x, 2)
-        elif isinstance(x, (list, tuple)):
-            return [round(i, 2) if isinstance(i, float) else i for i in x]
-        else:
-            return x
-    return df.applymap(round_cell)
-
-def _save_itemDF(itemDF, save_path):
-    """Creates directory if needed, rounds values, and saves itemDF as CSV."""
-    parent_dir = os.path.dirname(save_path)
-    if parent_dir and not os.path.exists(parent_dir):
-        os.makedirs(parent_dir, exist_ok=True)
-    rounded_df = round_itemDF(itemDF)
-    rounded_df.to_csv(save_path, index=False)
-
+        # print(f"Robot x: {robot_x}, Robot z: {robot_z}")
+        # cv2.imshow("AI2-THOR", controller.last_event.cv2img)
+        # cv2.waitKey(int(1000))
+        
+        time.sleep(0.1)
+        
 # ==========================
 # MAIN FUNCTION
 # ==========================
 def main():
     stepMagnitude = 0.25
-            
-    itemColumns = ["objectType", "Conf", "Position"]
+    
+    
+    # config = yaml.load(open('config.yaml'), Loader=yaml.FullLoader)
+    # api_key = config['OPENAI_KEY']
+    # gpt_model = config['OPENAI_CHAT_MODEL']
+    
+    itemColumns = ["name", "conf", "vizLoc", "glb3DLoc", "goalSimilarity", "searchPriority"]
     itemDF = pd.DataFrame(columns=itemColumns)
     
     yolo_model = YOLO("models/YOLO/yolov8s.pt")
