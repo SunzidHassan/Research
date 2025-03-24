@@ -113,7 +113,7 @@ def parse_position_string(pos_str):
     return np.array([float(val.strip()) for val in pos_str.split(',')])
 
 # ==========================
-# SENSOR FUNCTIONS
+# OLFACTION FUNCTIONS
 # ==========================
 
 def get_field_value(x, z, sources, q_s=2000, D=1000, U=0, tau=1000, del_t=1, psi_deg=0):
@@ -175,6 +175,154 @@ def olfactionBranch(sourcePos, controller,
     robot_x, robot_y, robot_z = np.array(list(controller.last_event.metadata["agent"]["position"].values()))
     plumeConcentration = round(get_field_value(robot_x, robot_z, sourcePos, q_s=q_s, D=D, U=U, tau=tau, del_t=del_t, psi_deg=psi_deg),4)
     return plumeConcentration
+
+
+# ==========================
+# VISION FUNCTIONS
+# ==========================
+
+def boxDepth(x, y, w, h, controller):
+    vMin = y - h//2
+    vMax = y + h//2
+    hMin = x - w//2
+    hMax = x + w//2
+    depthFrame = controller.last_event.depth_frame
+    boxDepth = np.percentile(depthFrame[vMin:vMax, hMin:hMax], 90)
+    return round(boxDepth, 1)
+
+
+def rotate_point(x_cam, z_cam, yaw_deg):
+    # Convert yaw angle to radians.
+    yaw_rad = np.deg2rad(yaw_deg)
+    # Build the rotation matrix for yaw.
+    R = np.array([[np.cos(yaw_rad), -np.sin(yaw_rad)],
+                  [np.sin(yaw_rad),  np.cos(yaw_rad)]])
+    rotated = R.dot(np.array([x_cam, z_cam]))
+    return rotated[0], rotated[1]
+
+
+def coord23D(x, y, w, h, controller):
+    image_width = 300  # controller.last_event.frame.shape[1]
+    image_height = 300 # controller.last_event.frame.shape[0]
+    h_fov = v_fov = 90
+    
+    center_u = image_width / 2.0  # 150
+    center_v = image_height / 2.0  # 150
+
+    # Angular resolution: degrees per pixel.
+    angle_per_pixel_h = (h_fov / 2.0) / center_u  # 0.3 degrees per pixel
+    angle_per_pixel_v = (v_fov / 2.0) / center_v    # 0.3 degrees per pixel
+
+    # Angular offsets from the center (in degrees).
+    theta_h_deg = (x - center_u) * angle_per_pixel_h
+    theta_v_deg = (y - center_v) * angle_per_pixel_v
+
+    # Convert angles to radians.
+    theta_h = np.deg2rad(theta_h_deg)
+    theta_v = np.deg2rad(theta_v_deg)
+
+    # Compute the depth of the object.
+    d = boxDepth(x, y, w, h, controller)
+    
+    # Compute 3D coordinates in the camera frame.
+    x_cam = d * np.sin(theta_h) * np.cos(theta_v)
+    y_cam = d * np.sin(theta_v)  # Flip sign if image v increases downward
+    z_cam = d * np.cos(theta_h) * np.cos(theta_v)
+
+    # Combine into camera-space vector
+    p_cam = np.array([x_cam, y_cam, z_cam])
+
+    # Step 2: Get robot's yaw and compute rotation matrix
+    robot_yaw_deg = controller.last_event.metadata["agent"]["rotation"]["y"]
+    theta = math.radians(robot_yaw_deg)
+
+    R_yaw = np.array([
+        [math.cos(theta), 0, math.sin(theta)],
+        [0, 1, 0],
+        [-math.sin(theta), 0, math.cos(theta)]
+    ])
+
+    # Rotate to align with global axes
+    p_rot = R_yaw @ p_cam
+
+    # Step 3: Translate using agent's position
+    agent_pos = controller.last_event.metadata["agent"]["position"]
+    x_global = round(agent_pos["x"] + p_rot[0], 2)
+    y_global = round(agent_pos["y"] + p_rot[1], 2)
+    z_global = round(agent_pos["z"] + p_rot[2], 2)
+
+    # Step 4: Return global coordinates
+    return x_global, y_global, z_global
+
+
+
+def visionBranch(model, itemDF, controller, confThr=0.3):
+    """
+    Updates itemDF with YOLO object detection results and depth estimation.
+    
+    For each detection:
+      - Compute the 3D coordinate (via coord23D).
+      - If an object with the same type exists in itemDF, check its position.
+        If the Euclidean distance is less than 0.5, update that entry by averaging the positions.
+      - Otherwise, append a new row.
+    """
+   
+    results = model(np.array(controller.last_event.frame))
+    
+    for box in results[0].boxes:
+        # Get xywh coordinates and confidence from the detection.
+        x, y, w, h = box.xywh[0]
+        confidence = box.conf[0].item()  # Convert confidence from tensor to float.
+        if confidence > confThr:
+            # Get the actual object name using the model's names dictionary.
+            className = model.names[int(box.cls[0].item())]
+            x, y, w, h = round(x.item()), round(y.item()), round(w.item()), round(h.item())
+            
+            # Compute the global 3D coordinate for this detection.
+            x_cam, y_cam, z_cam = coord23D(x, y, w, h, controller)
+            new_position = np.array([x_cam, y_cam, z_cam])
+            
+            updated = False
+            # Check if an entry with the same object type already exists in itemDF.
+            for idx, row in itemDF.iterrows():
+                if row['objectType'] == className:
+                    # Convert the stored string "x, y, z" to a numpy array.
+                    existing_position = np.array([float(val.strip()) for val in row['Position'].split(',')])
+                    # Compute the Euclidean distance.
+                    dist = np.linalg.norm(new_position - existing_position)
+                    if dist < 0.5:
+                        # Average the two positions.
+                        avg_position = (new_position + existing_position) / 2.0
+                        itemDF.at[idx, 'Position'] = f"{avg_position[0]}, {avg_position[1]}, {avg_position[2]}"
+                        updated = True
+                        break
+            # If no similar object exists, append a new entry.
+            if not updated:
+                new_row = pd.DataFrame({
+                    "objectType": [className],
+                    "Conf": [confidence],
+                    "Position": [f"{x_cam}, {y_cam}, {z_cam}"]
+                })
+                itemDF = pd.concat([itemDF, new_row], ignore_index=True)
+                
+    return itemDF
+
+
+def initialize_envKnowledge(controller, model, itemDF, confThr=0.3):
+    """
+    Initializes the itemDF table with YOLO object detection results.
+    """
+    for i in range(4):
+        itemDF = visionBranch(model, itemDF, controller)
+        itemDF_list = itemDF.to_dict(orient='records')
+        itemDF = pd.DataFrame(itemDF_list)
+        print(itemDF)
+        print("\n")
+    
+        controller.step(
+            "RotateLeft")
+    itemDF = add_goal_similarity(itemDF, "burning smell")
+    return itemDF
 
 # ==========================
 # CONTROL LOOP
@@ -239,35 +387,20 @@ def find_nearest_node(graph, position):
 
 def add_goal_similarity(table, goal_phrase):
     """
-    Computes the cosine similarity between each object's type and a goal phrase,
-    adds the similarity as a 'goalSim' key, and sorts the table by (Conf * goalSim)
-    in descending order.
-    
-    Parameters:
-        table (list): A list of dictionaries representing objects with keys 'objectType', 'Conf', and 'Position'.
-        goal_phrase (str): The phrase to compare against (default: "burning smell").
-    
-    Returns:
-        list: The updated and sorted table with an added 'goalSim' column.
+    Updates a DataFrame with a new 'goalSim' column and sorts by (Conf * goalSim).
     """
-    # Load the pre-trained Sentence Transformer model
     model = SentenceTransformer('all-MiniLM-L6-v2')
-    
-    # Compute the embedding for the goal phrase once
     goal_embedding = model.encode(goal_phrase, convert_to_tensor=True)
-    
-    # For each object in the table, compute cosine similarity between the object type and the goal phrase.
-    for row in table:
-        # Encode the object type to obtain its embedding
+
+    for idx, row in table.iterrows():
         object_embedding = model.encode(row["objectType"], convert_to_tensor=True)
-        # Compute cosine similarity
         cosine_sim = util.pytorch_cos_sim(object_embedding, goal_embedding).item()
-        # Add the computed similarity to the row
-        row["goalSim"] = cosine_sim
-    
-    # Sort the table by the product of 'Conf' and 'goalSim' in descending order
-    table.sort(key=lambda x: x["Conf"] * x["goalSim"], reverse=True)
+        table.at[idx, "goalSim"] = cosine_sim
+
+    table["Conf_goalSim"] = table["Conf"] * table["goalSim"]
+    table = table.sort_values(by="Conf_goalSim", ascending=False).drop(columns="Conf_goalSim")
     return table
+
 
 
 def fusion_control(controller, itemDF, yolo_model, source_position, 
@@ -298,7 +431,7 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
     # ========================== #
     ## Vision Branch: environment knowledge -> coordiante
     # Get environment knowledge
-    envKnowledge = extract_object_table(controller)
+    envKnowledge = initialize_envKnowledge(controller, yolo_model, itemDF, confThr=0.5)
     navKnowledge = add_goal_similarity(envKnowledge, goal_phrase)
     
     # Get reachable positions
@@ -382,8 +515,8 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
 
 
         source_pos = controller.last_event.metadata["agent"]["position"]
-        target_pos = parse_position_string(navKnowledge[0]["Position"])
-        print(f"Target object: {navKnowledge[0]['objectType']}")
+        target_pos = parse_position_string(navKnowledge.iloc[0]["Position"])
+        print(f"Target object: {navKnowledge.iloc[0]['objectType']}")
         
         start_node, src_dist = find_nearest_node(graph, source_pos)
         target_node, tgt_dist = find_nearest_node(graph, target_pos)
@@ -442,6 +575,13 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
         except: 
             print("Teleoportation error")
             break
+
+        # Exploration step: update env knowledge
+        envKnowledge = visionBranch(yolo_model, envKnowledge, controller)
+        navKnowledge = add_goal_similarity(envKnowledge, goal_phrase)
+        print(f"New target: {navKnowledge.iloc[0]['objectType']}")
+        print(itemDF)
+        print("\n")
         
         # Save the current odor concentration as the previous one for the next call.
         fusion_control.prev_odor_concentration = current_odor_concentration
@@ -468,8 +608,8 @@ def main():
     # api_key = config['OPENAI_KEY']
     # gpt_model = config['OPENAI_CHAT_MODEL']
     
-    itemColumns = ["name", "conf", "vizLoc", "glb3DLoc", "goalSimilarity", "searchPriority"]
-    itemDF = pd.DataFrame(columns=itemColumns)
+    # itemColumns = ["name", "conf", "vizLoc", "glb3DLoc", "goalSimilarity", "searchPriority"]
+    itemDF = pd.DataFrame()
     
     yolo_model = YOLO("models/YOLO/yolov8s.pt")
     
