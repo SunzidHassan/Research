@@ -586,7 +586,7 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
         # Save the current odor concentration as the previous one for the next call.
         fusion_control.prev_odor_concentration = current_odor_concentration
 
-        # Save the current vision frame.
+        # Save the current vision f023rame.
         # frame_filename = f"save/{step_count}.png"
         # cv2.imwrite(frame_filename, controller.last_event.cv2img)
         # print(f"Saved vision frame as {frame_filename}")
