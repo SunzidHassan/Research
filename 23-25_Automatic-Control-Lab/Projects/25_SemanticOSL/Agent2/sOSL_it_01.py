@@ -2,10 +2,7 @@ import time
 import math
 import numpy as np
 import pandas as pd
-import yaml
 import os
-import base64
-import requests
 import io
 from PIL import Image
 import cv2
@@ -17,7 +14,6 @@ from ultralytics import YOLO
 # from openai import OpenAI  # if needed
 from sentence_transformers import SentenceTransformer, util
 
-import open3d as o3d
 from scipy.ndimage import gaussian_filter
 
     
@@ -109,74 +105,127 @@ def extract_object_table(controller):
         })
     return result
 
+# ==========================
+# Infotaxis FUNCTIONS
+# ==========================
+
 def parse_position_string(pos_str):
     # Expecting a string like "x, y, z"
     return np.array([float(val.strip()) for val in pos_str.split(',')])
+
+def likelihood(current_odor_concentration, expected, sigma_noise):
+    return (
+        np.exp(-((current_odor_concentration - expected) ** 2) / (2 * sigma_noise ** 2))
+        / (np.sqrt(2 * np.pi) * sigma_noise)
+    )
+
+def entropy(prob_map):
+    eps = 1e-12
+    return -np.sum(prob_map * np.log(prob_map + eps))
+
+def world_to_grid(x, z, x_points, z_points):
+    col = (np.abs(x_points - x)).argmin()
+    row = (np.abs(z_points - z)).argmin()
+    return np.array([row, col])
+
+def grid_to_world(pos, x_points, z_points):
+    row, col = pos
+    return np.array([x_points[col], z_points[row]])
+
 
 # ==========================
 # OLFACTION FUNCTIONS
 # ==========================
 
-def get_field_value(x, z, sources, q_s=2000, D=1000, U=0, tau=1000, del_t=1, psi_deg=0):
-    """
-    Computes the odor field value at a single (x, z) coordinate as the sum of contributions
-    from one or more odor sources.
-
-    Parameters:
-        x, z       (float): Coordinates at which to evaluate the field.
-        sources    (ndarray or list): A collection of source positions, where each source is [x_s, y_s, z_s].
-        q_s        (float): Source strength.
-        D          (float): Diffusion coefficient.
-        U          (float): Advection velocity (set to 0 if no airflow).
-        tau        (float): Time or scaling parameter.
-        del_t      (float): Time step.
-        psi_deg    (float): Angle in degrees for rotation (direction of advection; irrelevant if U==0).
-
-    Returns:
-        (float): The computed field value at the coordinate (x, z) as the sum of contributions
-                 from all sources.
-    """
-    # Convert psi from degrees to radians
-    psi = math.radians(psi_deg)
-    
-    # Compute lambda; note that if U==0, lambda simplifies to sqrt(D*tau)
-    lambd = math.sqrt((D * tau) / (1 + (tau * U**2) / (4 * D)))
-    
-    total = 0.0
-    # Loop over each source
-    for source in sources:
-        x_s, y_s, z_s = source  # Unpack the source coordinates; ignore y_s here.
-        
-        # Compute differences in x and z relative to the odor source
-        delta_x = x - x_s
-        delta_z = z - z_s
-        
-        # Euclidean distance in the X-Z plane
-        r = math.sqrt(delta_x**2 + delta_z**2)
-        
-        # Avoid division by zero if r==0
-        if r == 0:
-            contribution = 0
-        else:
-            # Compute the rotated z coordinate (this incorporates advection if U != 0)
-            rotated_z = -delta_x * math.sin(psi) + delta_z * math.cos(psi)
-            
-            contribution = (q_s / (4 * math.pi * D * r)) * math.exp((-rotated_z * U) / (2 * D) - (r / lambd) * del_t)
-        
-        total += contribution
-        
-    return total
+def gaussian_plume(x, z, source, sigma=2.0):
+    Sx, Sz = source
+    dx = x - Sx
+    dz = z - Sz
+    return np.exp(-(dx**2 + dz**2) / (2 * sigma**2))
 
 
-def olfactionBranch(sourcePos, controller,
-                    q_s=200, D=10, U=0, tau=10, del_t=10, psi_deg=0):
-    """
-    Computes odor concentration based on the odor source position and the robot's current position.
-    """
+def olfactionBranch(source, controller, sigma_plume=2.0, sigma_noise=0.1):
     robot_x, robot_y, robot_z = np.array(list(controller.last_event.metadata["agent"]["position"].values()))
-    plumeConcentration = round(get_field_value(robot_x, robot_z, sourcePos, q_s=q_s, D=D, U=U, tau=tau, del_t=del_t, psi_deg=psi_deg),4)
-    return plumeConcentration
+    return gaussian_plume(robot_x, robot_z, source, sigma_plume) + np.random.normal(0, sigma_noise)
 
+class Infotaxis:
+    def __init__(self, pos, src_pos, x_points, z_points, sigma_plume, sigma_noise, reachable_positions):
+        self.pos = pos
+        self.src_pos = src_pos
+        self.x_points = x_points
+        self.z_points = z_points
+        self.window_x = len(x_points)
+        self.window_z = len(z_points)
+        # Start with a uniform belief
+        self.prob_map = np.full((self.window_z, self.window_x), 1.0 / (self.window_z * self.window_x))
+        self.sigma_plume = sigma_plume
+        self.sigma_noise = sigma_noise
+        self.reachable_positions = reachable_positions  # list of (x, z)
+
+
+    def update_belief(self, current_odor_concentration, robot_x, robot_z, smooth_sigma=1.0):
+        # 1) Bayesian update (pointwise multiplication)
+        for iz, z in enumerate(self.z_points):
+            for ix, x in enumerate(self.x_points):
+                expected = gaussian_plume(robot_x, robot_z, (x, z), self.sigma_plume)
+                self.prob_map[iz, ix] *= likelihood(current_odor_concentration, expected, self.sigma_noise)
+
+        # 2) Normalize once
+        self.prob_map /= self.prob_map.sum()
+
+        # 3) Apply Gaussian smoothing
+        if smooth_sigma > 0.0:
+            self.prob_map = gaussian_filter(self.prob_map, sigma=smooth_sigma, mode='reflect')
+
+            # 4) Re-normalize to ensure it remains a valid probability distribution
+            self.prob_map /= np.sum(self.prob_map)
+
+    def best_move(self, robot_x, robot_z, step_size):
+        best_expected_ent = np.inf
+        best_move = None
+
+        for dz in [-1, 0, 1]:
+            for dx in [-1, 0, 1]:
+                new_x = robot_x + dx * step_size
+                new_z = robot_z + dz * step_size
+
+                if not self.is_valid_move(new_x, new_z):
+                    continue
+
+                # Hypothetical measurement & posterior entropy
+                expected_meas = self.compute_expected_measurement(new_x, new_z)
+                new_ent = self.compute_expected_entropy(new_x, new_z, expected_meas)
+
+                if new_ent < best_expected_ent:
+                    best_expected_ent = new_ent
+                    best_move = (new_x, new_z)
+
+        return best_move
+
+    def is_valid_move(self, x, z, tol=1e-4):
+        return any(abs(rx - x) < tol and abs(rz - z) < tol for rx, rz in self.reachable_positions)
+
+    def compute_expected_measurement(self, x, z):
+        xgrid, zgrid = np.meshgrid(self.x_points, self.z_points)
+        plume_vals = gaussian_plume(x, z, (xgrid, zgrid), self.sigma_plume)
+        return np.sum(self.prob_map * plume_vals)
+
+    def compute_expected_entropy(self, x, z, expected_meas):
+        xgrid, zgrid = np.meshgrid(self.x_points, self.z_points)
+        expected_vals = gaussian_plume(x, z, (xgrid, zgrid), self.sigma_plume)
+        new_belief = self.prob_map * likelihood(expected_meas, expected_vals, self.sigma_noise)
+        new_belief /= new_belief.sum()
+        return entropy(new_belief)
+
+    def is_source_found(self, robot_x, robot_z, threshold=1.25):
+        """
+        Checks if the robot is within `threshold` distance of the odor source in world coordinates.
+        Also prints the distance at each check.
+        """
+        src_xy = grid_to_world(self.src_pos, self.x_points, self.z_points)
+        distance = np.linalg.norm(np.array([robot_x, robot_z]) - src_xy)
+        # print(f"Distance to source: {distance:.3f}")
+        return distance <= threshold
 
 # ==========================
 # VISION FUNCTIONS
@@ -309,7 +358,7 @@ def visionBranch(model, itemDF, controller, confThr=0.3):
     return itemDF
 
 
-def initialize_envKnowledge(controller, model, itemDF, confThr=0.3):
+def initialize_envKnowledge(controller, model, itemDF, probMap, x_points, z_points, confThr=0.3):
     """
     Initializes the itemDF table with YOLO object detection results.
     """
@@ -322,55 +371,72 @@ def initialize_envKnowledge(controller, model, itemDF, confThr=0.3):
     
         controller.step(
             "RotateLeft")
-    itemDF = add_goal_similarity(itemDF, "burning smell")
+    itemDF = add_goal_similarity(itemDF, "burning smell", probMap, x_points, z_points)
     return itemDF
 
-def generate_vision_map(df, grid_size=50, sigma=1):
+
+def add_goal_similarity(itemDF, goal_phrase, probMap, x_points, z_points):
     """
-    Generate a vision probability map from a DataFrame of object detections.
+    Updates itemDF with similarity columns:
+      - visionSim: detection confidence
+      - olfactionSim: Infotaxis belief from probMap
+      - langSim: textual similarity to goal phrase
+    Then calculates a combined similarity: goalSim = langSim * visionSim * olfactionSim.
 
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        DataFrame with columns "objectType", "Conf", "Position", and "goalSim".
-        The "Position" column is expected to be a string in the form "x_cam, y_cam, z_cam".
-    grid_size : int, optional
-        The size of the grid (default is 50, for a 50x50 grid).
-    sigma : float, optional
-        Standard deviation for Gaussian smoothing (default is 1).
-
-    Returns
-    -------
-    vision_map : numpy.ndarray
-        A normalized 2D array of shape (grid_size, grid_size) representing the vision probability map.
+    Parameters:
+        itemDF (pd.DataFrame): Must contain columns:
+            - objectType (string)
+            - Conf (float)
+            - Position (string) in 'x, y, z' format
+        goal_phrase (str): User's textual goal
+        probMap (2D np.ndarray): Infotaxis belief map
+        x_points, z_points (np.ndarray): World-to-grid coordinate arrays
     """
-    vision_map = np.zeros((grid_size, grid_size))
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+    goal_embedding = model.encode(goal_phrase, convert_to_tensor=True)
 
-    # Loop through each row in the DataFrame to accumulate probabilities.
-    for _, row in df.iterrows():
-        # Parse the position string "x_cam, y_cam, z_cam"
+    # Initialize columns
+    itemDF["visionSim"] = itemDF["Conf"]
+    itemDF["olfactionSim"] = np.nan
+    itemDF["langSim"] = np.nan
+    itemDF["goalSim"] = np.nan
+
+    for idx, row in itemDF.iterrows():
+        object_type = row["objectType"]
+
+        # Language similarity
+        object_embedding = model.encode(object_type, convert_to_tensor=True)
+        lang_similarity = util.pytorch_cos_sim(object_embedding, goal_embedding).item()
+        itemDF.at[idx, "langSim"] = lang_similarity
+
+        # Convert position from world to grid coordinates
         pos_str = row["Position"]
-        parts = pos_str.split(',')
-        x = int(float(parts[0].strip()))
-        y = int(float(parts[1].strip()))
-        
-        # Compute a combined probability weight from confidence and goalSim.
-        p = row["Conf"] * row["goalSim"]
-        
-        # Add the weight to the corresponding grid cell.
-        # Here, we assume that the grid uses array indexing with y as the row and x as the column.
-        if 0 <= x < grid_size and 0 <= y < grid_size:
-            vision_map[y, x] += p
+        x_world, _, z_world = map(float, pos_str.split(','))
+        grid_row, grid_col = world_to_grid(x_world, z_world, x_points, z_points)
 
-    # Apply Gaussian smoothing to spread the probability locally.
-    vision_map = gaussian_filter(vision_map, sigma=sigma)
-    
-    # Normalize the map so that the probabilities sum to 1.
-    vision_map = vision_map / np.sum(vision_map)
-    
-    return vision_map
+        # Olfaction similarity
+        olf_val = probMap[grid_row, grid_col]
+        itemDF.at[idx, "olfactionSim"] = olf_val
+
+        # Combined goal similarity
+        vision_sim = row["visionSim"]
+        combined_sim = vision_sim * lang_similarity * olf_val
+        itemDF.at[idx, "goalSim"] = combined_sim
+
+    # Sort by combined similarity
+    itemDF.sort_values(by="goalSim", ascending=False, inplace=True)
+
+    # Print the x, z coordinate of highest belief map value
+    max_index = np.unravel_index(np.argmax(probMap), probMap.shape)
+    max_x = x_points[max_index[1]]
+    max_z = z_points[max_index[0]]
+    print(f"Highest belief map coordinate: x={max_x}, z={max_z}")
+
+    return itemDF
+
+
 # ==========================
-# CONTROL LOOP
+# Nav Functions
 # ==========================
 
 def create_graph_from_positions(positions, threshold=0.3):
@@ -430,27 +496,14 @@ def find_nearest_node(graph, position):
             nearest_node = node
     return nearest_node, min_dist
 
-def add_goal_similarity(table, goal_phrase):
-    """
-    Updates a DataFrame with a new 'goalSim' column and sorts by (Conf * goalSim).
-    """
-    model = SentenceTransformer('all-MiniLM-L6-v2')
-    goal_embedding = model.encode(goal_phrase, convert_to_tensor=True)
-
-    for idx, row in table.iterrows():
-        object_embedding = model.encode(row["objectType"], convert_to_tensor=True)
-        cosine_sim = util.pytorch_cos_sim(object_embedding, goal_embedding).item()
-        table.at[idx, "goalSim"] = cosine_sim
-
-    table["Conf_goalSim"] = table["Conf"] * table["goalSim"]
-    table = table.sort_values(by="Conf_goalSim", ascending=False).drop(columns="Conf_goalSim")
-    return table
-
-
+# ==========================
+# CONTROL LOOP
+# ==========================
 
 def fusion_control(controller, itemDF, yolo_model, source_position, 
                  save_path="itemDF.csv", step_threshold = 50, max_time=150, goal_phrase="", 
-                 dist_threshold=1.0, stepMagnitude=0.5):
+                 dist_threshold=1.0, stepMagnitude=0.5,
+                 infotaxis_agent=None, x_points=None, z_points=None, step_size=0.25):
     """
     Automatic control loop.
     Each iteration:
@@ -465,20 +518,34 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
         terminate the loop.
     - Logs the time, robot position (x, z), robot yaw...
     """
-    
     step_count = 1    
     start_time = time.time()
+    entropies = []
     logDF = pd.DataFrame(columns=["step", "robot_x", "robot_z", "robot_yaw", 
                                   "target_object", "concentration"])
-    
+    # Retrieve robot's current pose.
+    agent_meta = controller.last_event.metadata["agent"]
+    robot_x = agent_meta["position"].get("x", None)
+    robot_z = agent_meta["position"].get("z", None)  # using z for ground plane coordinate
+    robot_yaw = agent_meta["rotation"].get("y", None)
+
     print("Fusion control active. Executing actions until timeout or target reached.")
     
     # ========================== #
     ## Vision Branch: environment knowledge -> coordiante
     # Get environment knowledge
-    envKnowledge = initialize_envKnowledge(controller, yolo_model, itemDF, confThr=0.5)
-    navKnowledge = add_goal_similarity(envKnowledge, goal_phrase)
-    
+    # 1) Update Infotaxis belief
+    Sx, Sy, Sz = source_position[0]
+    current_odor_concentration = olfactionBranch((Sx, Sz), controller)
+    infotaxis_agent.update_belief(current_odor_concentration, robot_x, robot_z)
+
+    # 2) Extract the updated belief map
+    probMap = infotaxis_agent.prob_map  # The agent's final distribution
+
+    # 3) Use the belief map where needed
+    envKnowledge = initialize_envKnowledge(controller, yolo_model, itemDF, probMap, x_points=x_points, z_points=z_points, confThr=0.5)
+    navKnowledge = add_goal_similarity(envKnowledge, goal_phrase, probMap, x_points, z_points)
+
     # Get reachable positions
     positions = controller.step(action="GetReachablePositions").metadata["actionReturn"]
     # Generate a graph of rechable positions
@@ -524,9 +591,8 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
         
         # ========================== #
         ## Olfaction Branch: robot coordinate -> odor concentration
-
         # get current odor concentration
-        current_odor_concentration = olfactionBranch(source_position, controller)
+        current_odor_concentration = olfactionBranch((Sx, Sz), controller)
         
         prev_odor_concentration = getattr(fusion_control, "prev_odor_concentration", None)
         
@@ -536,7 +602,13 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
 
         print(f"Prev Odor Concentration: {prev_odor_concentration}")
         print(f"Current Odor Concentration: {current_odor_concentration}\n")
-    
+
+
+        # Step 2: update belief
+        infotaxis_agent.update_belief(current_odor_concentration, robot_x, robot_z)
+        current_ent = entropy(infotaxis_agent.prob_map)
+        entropies.append(current_ent)
+
         # ========================== #
         ## Log output
             
@@ -610,22 +682,26 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
             
             step_count += 1
 
-            # Check if odor concentration is increasing
-            if current_odor_concentration < prev_odor_concentration:
-                print("Concentration decreased. Change target.")
-                    # Drop the top row from navKnowledge if it exists.
-                if navKnowledge:
-                    navKnowledge.pop(0)
-            else: print("Concentration increased. Continue.")
         except: 
             print("Teleoportation error")
             break
 
         # Exploration step: update env knowledge
+        probMap = infotaxis_agent.prob_map  # The agent's final distribution
         envKnowledge = visionBranch(yolo_model, envKnowledge, controller)
-        navKnowledge = add_goal_similarity(envKnowledge, goal_phrase)
+        navKnowledge = add_goal_similarity(envKnowledge, goal_phrase, probMap, x_points, z_points)
+        
+        
         print(f"New target: {navKnowledge.iloc[0]['objectType']}")
-        print(itemDF)
+        # Print only the relevant columns. For example:
+        columns_of_interest = ["objectType", "visionSim", "olfactionSim", "langSim", "goalSim"]
+        print(navKnowledge[columns_of_interest])
+        # Print the x, z coordinate of highest belief map value
+        max_index = np.unravel_index(np.argmax(probMap), probMap.shape)
+        max_x = x_points[max_index[1]]
+        max_z = z_points[max_index[0]]
+        print(f"Highest belief map coordinate: x={max_x}, z={max_z}")
+
         print("\n")
         
         # Save the current odor concentration as the previous one for the next call.
@@ -636,7 +712,7 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
         # cv2.imwrite(frame_filename, controller.last_event.cv2img)
         # print(f"Saved vision frame as {frame_filename}")
         
-        # print(f"Robot x: {robot_x}, Robot z: {robot_z}")
+        # print(f"scipyRobot x: {robot_x}, Robot z: {robot_z}")
         # cv2.imshow("AI2-THOR", controller.last_event.cv2img)
         # cv2.waitKey(int(1000))
         
@@ -674,6 +750,31 @@ def main():
         fieldOfView=90
     )
     
+    scene_bounds = controller.last_event.metadata["sceneBounds"]
+
+    # Convert corner points to a numpy array
+    corner_points = np.array(scene_bounds["cornerPoints"])
+    # Round them to nearest 0.25 increments (if desired)
+    corner_points = np.floor(corner_points / 0.25) * 0.25
+
+    # Extract x and z coords
+    x_coords = corner_points[:, 0]
+    z_coords = corner_points[:, 2]
+    # Determine min and max
+    x_min, x_max = np.round(x_coords.min(), 2), np.round(x_coords.max(), 2)
+    z_min, z_max = np.round(z_coords.min(), 2), np.round(z_coords.max(), 2)
+
+    # Step size for the environment
+    step_size = 0.25
+
+    # Create the coordinate arrays
+    x_points = np.arange(x_min, x_max + step_size, step_size)
+    z_points = np.arange(z_min, z_max + step_size, step_size)
+
+    print(f'X bounds: {x_min}, {x_max}')
+    print(f'Z bounds: {z_min}, {z_max}')
+
+    # (1) Retrieve the odor source from iTHOR objects
     goal = "smoke"
     target_items = ["Microwave"]
     
@@ -682,6 +783,32 @@ def main():
     
     objects = controller.last_event.metadata["objects"]
     sourcePos = get_objects_centers(objects, target_items)
+    x, y, z = sourcePos[0]
+
+    # (2) Environment parameters
+    sigma_plume = 2.0
+    sigma_noise = 0.1
+
+    # (3) Retrieve the robot's start info
+    agent_pos = controller.last_event.metadata["agent"]["position"]
+    robot_x = agent_pos["x"]
+    robot_z = agent_pos["z"]
+
+    reachable = controller.step(action="GetReachablePositions").metadata["actionReturn"]
+    reachable_positions = [(pos["x"], pos["z"]) for pos in reachable]
+
+    # (4) Setup the Infotaxis agent
+    src_grid_pos = world_to_grid(x, y, x_points, z_points)
+    start_grid_pos = world_to_grid(robot_x, robot_z, x_points, z_points)
+    infotaxis_agent = Infotaxis(
+    start_grid_pos,
+    src_grid_pos,
+    x_points,
+    z_points,
+    sigma_plume,
+    sigma_noise,
+    reachable_positions
+    )
 
     # Obtain current scene objects.
     # if target_items == ['Microwave']:
@@ -779,7 +906,10 @@ def main():
         max_time=200,
         goal_phrase=goal,
         dist_threshold=1.2,
-        stepMagnitude=stepMagnitude
+        stepMagnitude=stepMagnitude,
+        infotaxis_agent=infotaxis_agent,
+        x_points=x_points,
+        z_points=z_points
     )
 
 if __name__ == "__main__":

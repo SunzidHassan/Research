@@ -580,7 +580,7 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
         envKnowledge = visionBranch(yolo_model, envKnowledge, controller)
         navKnowledge = add_goal_similarity(envKnowledge, goal_phrase)
         print(f"New target: {navKnowledge.iloc[0]['objectType']}")
-        print(itemDF)
+        print(navKnowledge)
         print("\n")
         
         # Save the current odor concentration as the previous one for the next call.
