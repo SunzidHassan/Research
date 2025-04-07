@@ -775,11 +775,11 @@ def main():
     print(f'Z bounds: {z_min}, {z_max}')
 
     # (1) Retrieve the odor source from iTHOR objects
-    goal = "smoke"
-    target_items = ["Microwave"]
+    # goal = "smoke"
+    # target_items = ["Microwave"]
     
-    # goal = "rotten smell"
-    # target_items = ["GarbageCan"]
+    goal = "rotten smell"
+    target_items = ["GarbageCan"]
     
     objects = controller.last_event.metadata["objects"]
     sourcePos = get_objects_centers(objects, target_items)
@@ -798,7 +798,7 @@ def main():
     reachable_positions = [(pos["x"], pos["z"]) for pos in reachable]
 
     # (4) Setup the Infotaxis agent
-    src_grid_pos = world_to_grid(x, y, x_points, z_points)
+    src_grid_pos = world_to_grid(x, z, x_points, z_points)
     start_grid_pos = world_to_grid(robot_x, robot_z, x_points, z_points)
     infotaxis_agent = Infotaxis(
     start_grid_pos,
@@ -858,17 +858,17 @@ def main():
     # )
     
     
-    # # Garbage Start Pos 1: facing back to the garbage bin
-    # controller.step(
-    #     action="Teleport",
-    #     position=dict(x=1.5, y=0.9, z=2),
-    #     rotation=dict(x=0, y=90, z=0),
-    # )
+    # Garbage Start Pos 1: facing back to the garbage bin
+    controller.step(
+        action="Teleport",
+        position=dict(x=1.5, y=0.9, z=2),
+        rotation=dict(x=0, y=90, z=0),
+    )
 
-    # controller.step(
-    #     "MoveAhead",
-    #     moveMagnitude=0.01
-    # )
+    controller.step(
+        "MoveAhead",
+        moveMagnitude=0.01
+    )
 
     # # Garbage Start Pos 2: upper left corner
     # controller.step(
