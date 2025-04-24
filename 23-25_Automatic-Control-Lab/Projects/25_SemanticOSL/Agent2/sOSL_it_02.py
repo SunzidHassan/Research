@@ -527,6 +527,47 @@ def find_nearest_node(graph, position):
             nearest_node = node
     return nearest_node, min_dist
 
+import heapq
+import math
+
+def astar_on_graph(graph, start, goal):
+    """
+    A* over a NetworkX‐style graph where each edge.weight is the true Euclidean cost.
+    We use Euclidean distance between nodes as the heuristic.
+    """
+    def heuristic(u, v):
+        pu = np.array(graph.nodes[u]['pos'])
+        pv = np.array(graph.nodes[v]['pos'])
+        return np.linalg.norm(pu - pv)
+
+    open_set = [(0 + heuristic(start, goal), 0, start, None)]
+    came_from = {}
+    g_score = {start: 0}
+
+    while open_set:
+        f, g, current, parent = heapq.heappop(open_set)
+        if current in came_from:
+            continue
+        came_from[current] = parent
+        if current == goal:
+            # Reconstruct path
+            path = []
+            node = current
+            while node is not None:
+                path.append(node)
+                node = came_from[node]
+            return list(reversed(path))
+
+        for nbr in graph.neighbors(current):
+            cost = graph.edges[current, nbr]['weight']
+            tentative_g = g + cost
+            if tentative_g < g_score.get(nbr, float('inf')):
+                g_score[nbr] = tentative_g
+                f_score = tentative_g + heuristic(nbr, goal)
+                heapq.heappush(open_set, (f_score, tentative_g, nbr, current))
+    return None
+
+
 # ==========================
 # CONTROL LOOP
 # ==========================
@@ -670,8 +711,8 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
         target_node, tgt_dist = find_nearest_node(graph, target_pos)
 
         # Compute the shortest path from start to end nodes
-        path_nodes = nx.dijkstra_path(graph, source=start_node, target=target_node, weight='weight')
-        
+        path_nodes = astar_on_graph(graph, start_node, target_node)
+
         path_positions = [graph.nodes[node]['pos'] for node in path_nodes]
         
         try: pos = path_positions[1] # Next position to move to
@@ -976,7 +1017,7 @@ def main():
         save_path="save/itemDF.csv",
         max_time=200,
         goal_phrase=goal,
-        dist_threshold=1.2,
+        dist_threshold=0.5,
         stepMagnitude=stepMagnitude,
         infotaxis_agent=infotaxis_agent,
         x_points=x_points,
