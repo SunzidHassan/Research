@@ -440,7 +440,7 @@ def add_goal_similarity(itemDF, goal_phrase, probMap, x_points, z_points, nav_mo
     return itemDF
 
 
-def generate_heatmap(df, x_points, z_points, weight_key='goalSim', sigma=1.0, upsample=2):
+def generate_heatmap(df, x_points, z_points, weight_key='goalSim', sigma=1.0, upsample=8):
     """
     Build a normalized [0–1] heatmap on the grid defined by x_points, z_points,
     using df rows weighted by df[weight_key], then upsample by 'upsample' factor.
@@ -713,50 +713,63 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
         # Compute the shortest path from start to end nodes
         path_nodes = astar_on_graph(graph, start_node, target_node)
 
-        path_positions = [graph.nodes[node]['pos'] for node in path_nodes]
-        
-        try: pos = path_positions[1] # Next position to move to
-        except: pos = path_positions[0] # If no path, stay at the current position
-        
-        # Assume robot_x, robot_y, robot_z and robot_yaw are current values.
-        robot_pos = np.array([robot_x, robot_z])
-        next_pos = np.array([pos[0], pos[2]])  # use pos[2] for z coordinate
+        # 1. Compute your "current" score at robot_x,robot_z
+        exp0 = infotaxis_agent.compute_expected_measurement(robot_x, robot_z)
+        Ei0  = infotaxis_agent.compute_expected_entropy(robot_x, robot_z, exp0)
+        # approximate Ev0 at current pose
+        Ev0  = entropy(generate_heatmap(navKnowledge, x_points, z_points,
+                                        weight_key=('langSim' if nav_mode=='v' else 'goalSim'),
+                                        sigma=sigma_vis, upsample=1))
+        S0   = Ei0 + lambda_vis * Ev0
 
-        dir_vector = next_pos - robot_pos
+        # 2. Walk the path as long as score improves
+        for node in path_nodes[1:]:
+            x_n, y_n, z_n = graph.nodes[node]['pos']
 
-        # Compute target yaw (0° is along +z)
-        target_yaw = math.degrees(math.atan2(dir_vector[0], dir_vector[1]))
+            # compute candidate infotaxis entropy
+            exp_n = infotaxis_agent.compute_expected_measurement(x_n, z_n)
+            Ei_n  = infotaxis_agent.compute_expected_entropy(x_n, z_n, exp_n)
 
-        relative_yaw = target_yaw - robot_yaw
-        if relative_yaw < -180:
-            relative_yaw += 360
-        elif relative_yaw > 180:
-            relative_yaw -= 360
+            # compute candidate vision entropy (teleport in place for fresh navKnowledge)
+            controller.step("Teleport", position=dict(x=x_n,y=y_n,z=z_n),
+                            rotation=dict(x=0,y=robot_yaw,z=0))
+            tmpDF  = initialize_envKnowledge(controller, yolo_model, itemDF.copy(),
+                                            infotaxis_agent.prob_map, x_points, z_points,
+                                            nav_mode=nav_mode)
+            tmpNav = add_goal_similarity(tmpDF, goal_phrase,
+                                        infotaxis_agent.prob_map, x_points, z_points,
+                                        nav_mode=nav_mode)
+            Ev_n   = entropy(generate_heatmap(tmpNav, x_points, z_points,
+                                            weight_key=('langSim' if nav_mode=='v' else 'goalSim'),
+                                            sigma=sigma_vis, upsample=1))
 
-        print(f"Relative yaw: {relative_yaw:.2f}")
+            S_n = Ei_n + lambda_vis * Ev_n
 
-        # Rotate towards the target yaw
-        if relative_yaw > 0:
-            controller.step("RotateRight")
-        elif relative_yaw < 0:
-            controller.step("RotateLeft")
+            # If candidate is strictly better, make the move and update S0
+            if S_n < S0:
+                # compute yaw and rotate/teleport
+                dir_vec   = np.array([x_n - robot_x, z_n - robot_z])
+                target_y  = math.degrees(math.atan2(dir_vec[0], dir_vec[1]))
+                rotate_and_teleport(controller, (x_n,y_n,z_n), target_y)
 
-        print(f"Rotated to target yaw: {target_yaw:.2f}")
+                # update pose and score
+                robot_x, robot_z = x_n, z_n
+                robot_yaw       = target_y
+                S0              = S_n
 
-        try:
-            # Move towards the target position
-            controller.step(
-                action="Teleport",
-                position=dict(x=pos[0], y=pos[1], z=pos[2]),
-                rotation=dict(x=0, y=target_yaw, z=0)  # explicitly set rotation
-            )
-            print(f"Teleported to: x={pos[0]:.2f}, y={pos[1]:.2f}, z={pos[2]:.2f}")
-            
-            step_count += 1
-
-        except: 
-            print("Teleoportation error")
-            break
+                # refresh navKnowledge at new pose
+                envKnowledge = visionBranch(yolo_model, envKnowledge, controller)
+                navKnowledge = add_goal_similarity(envKnowledge, goal_phrase,
+                                                infotaxis_agent.prob_map,
+                                                x_points, z_points,
+                                                nav_mode=nav_mode)
+            else:
+                # next step would increase entropy → stop and re-plan
+                # teleport back to original yaw if needed
+                controller.step("Teleport",
+                                position=dict(x=robot_x,y=agent_meta['position']['y'],z=robot_z),
+                                rotation=dict(x=0,y=robot_yaw,z=0))
+                break
 
         # Exploration step: update env knowledge
         probMap = infotaxis_agent.prob_map  # The agent's final distribution

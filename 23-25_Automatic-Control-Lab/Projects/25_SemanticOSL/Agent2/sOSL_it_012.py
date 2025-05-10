@@ -605,8 +605,20 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
         # Check termination condition AFTER logging the decision.
         if min_distance < dist_threshold:
             print(f"Robot is within {dist_threshold} of the target. Mission accomplished!")
+
+            # Log the final step before breaking
+            log_entry = {
+                "step": step_count,
+                "robot_x": robot_x,
+                "robot_z": robot_z,
+                "robot_yaw": robot_yaw,
+                "concentration": current_odor_concentration
+            }
+            logDF = pd.concat([logDF, pd.DataFrame([log_entry], columns=logDF.columns)], ignore_index=True)
+
             logDF.to_csv("save/trajectory_log.csv", index=False)
             break
+
         
         # Check step limit.
         if step_count >= step_threshold:
@@ -674,8 +686,14 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
         
         path_positions = [graph.nodes[node]['pos'] for node in path_nodes]
         
-        try: pos = path_positions[1] # Next position to move to
-        except: pos = path_positions[0] # If no path, stay at the current position
+        # Compute midpoint between robot and target
+        robot_pos = np.array([robot_x, agent_meta["position"]["y"], robot_z])
+        target_pos_full = np.array([target_pos[0], agent_meta["position"]["y"], target_pos[2]])
+        midpoint = (robot_pos + target_pos_full) / 2.0
+
+        # Find the nearest node in the graph to the midpoint
+        midpoint_node, _ = find_nearest_node(graph, midpoint.tolist())
+        pos = graph.nodes[midpoint_node]["pos"]
         
         # Assume robot_x, robot_y, robot_z and robot_yaw are current values.
         robot_pos = np.array([robot_x, robot_z])
@@ -774,9 +792,14 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
         combined = np.concatenate([infomap_color, vision_color, goal_color], axis=1)
 
         # 5) save high-res combined map
-        out_fname = f"save/maps_all_{step_count}.png"
+        out_fname = f"save/maps_all_{step_count}_x_{robot_x:.2f}_z_{robot_z:.2f}.png"
         cv2.imwrite(out_fname, combined)
-        print(f"Saved combined infotaxis|vision|goalSim map (2× res) as {out_fname}")
+        print(f"Saved combined infotaxis|vision|goalSim map as {out_fname}")
+        
+        # Save egocentric RGB frame
+        frame_bgr = controller.last_event.cv2img  # AI2-THOR gives frame in BGR format
+        cv2.imwrite(f"save/frame_{step_count:03d}_x_{robot_x:.2f}_z_{robot_z:.2f}.png", frame_bgr)
+
 
         # print(f"scipyRobot x: {robot_x}, Robot z: {robot_z}")
         # cv2.imshow("AI2-THOR", controller.last_event.cv2img)
@@ -789,6 +812,7 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
 # ==========================
 def main():
     mode = input("Select navigation mode (f: fusion, v: vision only, o: olfaction only): ").strip().lower()
+    # mode = 'f'
     while mode not in ['f', 'v', 'o']:
         mode = input("Invalid input. Please enter 'f', 'v', or 'o': ").strip().lower()
 
@@ -846,11 +870,11 @@ def main():
     print(f'Z bounds: {z_min}, {z_max}')
 
     # (1) Retrieve the odor source from iTHOR objects
-    goal = "smoke"
-    target_items = ["Microwave"]
+    # goal = "smoke"
+    # target_items = ["Microwave"]
     
-    # goal = "rotten smell"
-    # target_items = ["GarbageCan"]
+    goal = "rotten smell"
+    target_items = ["GarbageCan"]
     
     objects = controller.last_event.metadata["objects"]
     sourcePos = get_objects_centers(objects, target_items)
@@ -893,16 +917,16 @@ def main():
         
 
     # # Microwave Starting position 1
-    controller.step(
-        action="Teleport",
-        position=dict(x=1.5, y=0.9, z=1.5),
-        rotation=dict(x=0, y=180, z=0)
-    )
+    # controller.step(
+    #     action="Teleport",
+    #     position=dict(x=1.5, y=0.9, z=1.5),
+    #     rotation=dict(x=0, y=180, z=0)
+    # )
 
-    controller.step(
-        "MoveAhead",
-        moveMagnitude=0.01
-    )
+    # controller.step(
+    #     "MoveAhead",
+    #     moveMagnitude=0.01
+    # )
     
     # # Microwave Starting position 2
     # controller.step(
@@ -930,16 +954,16 @@ def main():
     
     
     # Garbage Start Pos 1: facing back to the garbage bin
-    # controller.step(
-    #     action="Teleport",
-    #     position=dict(x=1.5, y=0.9, z=2),
-    #     rotation=dict(x=0, y=90, z=0),
-    # )
+    controller.step(
+        action="Teleport",
+        position=dict(x=1.5, y=0.9, z=2),
+        rotation=dict(x=0, y=90, z=0),
+    )
 
-    # controller.step(
-    #     "MoveAhead",
-    #     moveMagnitude=0.01
-    # )
+    controller.step(
+        "MoveAhead",
+        moveMagnitude=0.01
+    )
 
     # # Garbage Start Pos 2: upper left corner
     # controller.step(
@@ -976,7 +1000,8 @@ def main():
         save_path="save/itemDF.csv",
         max_time=200,
         goal_phrase=goal,
-        dist_threshold=1.2,
+        # dist_threshold=1.2,
+        dist_threshold=0.5,
         stepMagnitude=stepMagnitude,
         infotaxis_agent=infotaxis_agent,
         x_points=x_points,
