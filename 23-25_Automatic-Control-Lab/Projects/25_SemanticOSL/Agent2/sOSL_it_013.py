@@ -16,7 +16,8 @@ from sentence_transformers import SentenceTransformer, util
 
 from scipy.ndimage import gaussian_filter
 
-    
+import matplotlib.pyplot as plt
+
 # ==========================
 # HELPER FUNCTION: Compress Image
 # ==========================
@@ -527,47 +528,6 @@ def find_nearest_node(graph, position):
             nearest_node = node
     return nearest_node, min_dist
 
-import heapq
-import math
-
-def astar_on_graph(graph, start, goal):
-    """
-    A* over a NetworkX‐style graph where each edge.weight is the true Euclidean cost.
-    We use Euclidean distance between nodes as the heuristic.
-    """
-    def heuristic(u, v):
-        pu = np.array(graph.nodes[u]['pos'])
-        pv = np.array(graph.nodes[v]['pos'])
-        return np.linalg.norm(pu - pv)
-
-    open_set = [(0 + heuristic(start, goal), 0, start, None)]
-    came_from = {}
-    g_score = {start: 0}
-
-    while open_set:
-        f, g, current, parent = heapq.heappop(open_set)
-        if current in came_from:
-            continue
-        came_from[current] = parent
-        if current == goal:
-            # Reconstruct path
-            path = []
-            node = current
-            while node is not None:
-                path.append(node)
-                node = came_from[node]
-            return list(reversed(path))
-
-        for nbr in graph.neighbors(current):
-            cost = graph.edges[current, nbr]['weight']
-            tentative_g = g + cost
-            if tentative_g < g_score.get(nbr, float('inf')):
-                g_score[nbr] = tentative_g
-                f_score = tentative_g + heuristic(nbr, goal)
-                heapq.heappush(open_set, (f_score, tentative_g, nbr, current))
-    return None
-
-
 # ==========================
 # CONTROL LOOP
 # ==========================
@@ -603,6 +563,18 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
 
     print("Fusion control active. Executing actions until timeout or target reached.")
     
+    H_goal = 1
+    # compute maximum possible entropy
+    num_cells = len(z_points)*len(x_points)
+    H_max     = np.log2(num_cells)
+    print(f"Max entropy: {H_max:.2f} bits")
+
+    # choose a fraction—for instance 0.2 → we stop when the distribution is ≤20% of max entropy
+    entropy_frac = 0.97
+    entropy_threshold = H_max * entropy_frac   # ~8.92*0.2 ≈ 1.8 bits
+    print(f"Entropy threshold: {entropy_threshold:.2f} bits")
+    # choose a fraction—for instance 0.2 → we stop when the distribution is ≤20% of max entropy
+
     # ========================== #
     ## Vision Branch: environment knowledge -> coordiante
     # Get environment knowledge
@@ -644,11 +616,64 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
         print(f"Current minimum distance to target: {min_distance:.2f}")
 
         # Check termination condition AFTER logging the decision.
-        if min_distance < dist_threshold:
-            print(f"Robot is within {dist_threshold} of the target. Mission accomplished!")
+        # if min_distance < dist_threshold:
+        #     print(f"Robot is within {dist_threshold} of the target. Mission accomplished!")
+
+        #     # Log the final step before breaking
+        #     log_entry = {
+        #         "step": step_count,
+        #         "robot_x": robot_x,
+        #         "robot_z": robot_z,
+        #         "robot_yaw": robot_yaw,
+        #         "concentration": current_odor_concentration
+        #     }
+        #     logDF = pd.concat([logDF, pd.DataFrame([log_entry], columns=logDF.columns)], ignore_index=True)
+
+        #     logDF.to_csv("save/trajectory_log.csv", index=False)
+        #     break
+        # 6b) goal‐map entropy based “direct teleport”  
+        if H_goal > entropy_threshold:
+            # pick the top object from navKnowledge
+            obj_row    = navKnowledge.iloc[0]
+            target_obj = obj_row["objectType"]
+            target_pos = parse_position_string(obj_row["Position"])
+            print(f"High entropy ({H_goal:.2f} bits) > threshold; teleporting to top object: {target_obj}")
+
+            # find the nearest reachable node to that object
+            target_node, _ = find_nearest_node(graph, target_pos)
+            pos           = graph.nodes[target_node]["pos"]
+
+            # compute a facing yaw so the robot “looks at” the object
+            dx, dz = target_pos[0] - robot_x, target_pos[2] - robot_z
+            target_yaw = math.degrees(math.atan2(dx, dz))
+
+            # teleport
+            try:
+                controller.step(
+                    action="Teleport",
+                    position=dict(x=pos[0], y=pos[1], z=pos[2]),
+                    rotation=dict(x=0, y=target_yaw, z=0)
+                )
+                print(f"Teleported to {target_obj} at x={pos[0]:.2f}, y={pos[1]:.2f}, z={pos[2]:.2f} (yaw={target_yaw:.1f}°)")
+            except Exception as e:
+                print("Teleport error:", e)
+
+            # --- final step logging before exit ---
+            new_row = pd.DataFrame([{
+                "step":        step_count,
+                "robot_x":     pos[0],
+                "robot_z":     pos[2],
+                "robot_yaw":   target_yaw,
+                "target_object": target_obj,
+                "concentration": current_odor_concentration
+            }])
+            logDF = pd.concat([logDF, new_row], ignore_index=True)
+
+            # log & exit
+            print(f"Entropy > {entropy_threshold:.2f} bits; ending search and saving log.")
             logDF.to_csv("save/trajectory_log.csv", index=False)
             break
-        
+
         # Check step limit.
         if step_count >= step_threshold:
             print(f"Step limit of {step_threshold} reached. Saving log and exiting.")
@@ -679,6 +704,7 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
         # Step 2: update belief
         infotaxis_agent.update_belief(current_odor_concentration, robot_x, robot_z)
         current_ent = entropy(infotaxis_agent.prob_map)
+        print(f"[Step {step_count}] Infotaxis Entropy: {current_ent:.4f}")
         entropies.append(current_ent)
 
         # ========================== #
@@ -711,65 +737,58 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
         target_node, tgt_dist = find_nearest_node(graph, target_pos)
 
         # Compute the shortest path from start to end nodes
-        path_nodes = astar_on_graph(graph, start_node, target_node)
+        path_nodes = nx.dijkstra_path(graph, source=start_node, target=target_node, weight='weight')
+        
+        path_positions = [graph.nodes[node]['pos'] for node in path_nodes]
+        
+        # Compute midpoint between robot and target
+        robot_pos = np.array([robot_x, agent_meta["position"]["y"], robot_z])
+        target_pos_full = np.array([target_pos[0], agent_meta["position"]["y"], target_pos[2]])
+        midpoint = (robot_pos + target_pos_full) / 2.0
 
-        # 1. Compute your "current" score at robot_x,robot_z
-        exp0 = infotaxis_agent.compute_expected_measurement(robot_x, robot_z)
-        Ei0  = infotaxis_agent.compute_expected_entropy(robot_x, robot_z, exp0)
-        # approximate Ev0 at current pose
-        Ev0  = entropy(generate_heatmap(navKnowledge, x_points, z_points,
-                                        weight_key=('langSim' if nav_mode=='v' else 'goalSim'),
-                                        sigma=sigma_vis, upsample=1))
-        S0   = Ei0 + lambda_vis * Ev0
+        # Find the nearest node in the graph to the midpoint
+        midpoint_node, _ = find_nearest_node(graph, midpoint.tolist())
+        pos = graph.nodes[midpoint_node]["pos"]
+        
+        # Assume robot_x, robot_y, robot_z and robot_yaw are current values.
+        robot_pos = np.array([robot_x, robot_z])
+        next_pos = np.array([pos[0], pos[2]])  # use pos[2] for z coordinate
 
-        # 2. Walk the path as long as score improves
-        for node in path_nodes[1:]:
-            x_n, y_n, z_n = graph.nodes[node]['pos']
+        dir_vector = next_pos - robot_pos
 
-            # compute candidate infotaxis entropy
-            exp_n = infotaxis_agent.compute_expected_measurement(x_n, z_n)
-            Ei_n  = infotaxis_agent.compute_expected_entropy(x_n, z_n, exp_n)
+        # Compute target yaw (0° is along +z)
+        target_yaw = math.degrees(math.atan2(dir_vector[0], dir_vector[1]))
 
-            # compute candidate vision entropy (teleport in place for fresh navKnowledge)
-            controller.step("Teleport", position=dict(x=x_n,y=y_n,z=z_n),
-                            rotation=dict(x=0,y=robot_yaw,z=0))
-            tmpDF  = initialize_envKnowledge(controller, yolo_model, itemDF.copy(),
-                                            infotaxis_agent.prob_map, x_points, z_points,
-                                            nav_mode=nav_mode)
-            tmpNav = add_goal_similarity(tmpDF, goal_phrase,
-                                        infotaxis_agent.prob_map, x_points, z_points,
-                                        nav_mode=nav_mode)
-            Ev_n   = entropy(generate_heatmap(tmpNav, x_points, z_points,
-                                            weight_key=('langSim' if nav_mode=='v' else 'goalSim'),
-                                            sigma=sigma_vis, upsample=1))
+        relative_yaw = target_yaw - robot_yaw
+        if relative_yaw < -180:
+            relative_yaw += 360
+        elif relative_yaw > 180:
+            relative_yaw -= 360
 
-            S_n = Ei_n + lambda_vis * Ev_n
+        print(f"Relative yaw: {relative_yaw:.2f}")
 
-            # If candidate is strictly better, make the move and update S0
-            if S_n < S0:
-                # compute yaw and rotate/teleport
-                dir_vec   = np.array([x_n - robot_x, z_n - robot_z])
-                target_y  = math.degrees(math.atan2(dir_vec[0], dir_vec[1]))
-                rotate_and_teleport(controller, (x_n,y_n,z_n), target_y)
+        # Rotate towards the target yaw
+        if relative_yaw > 0:
+            controller.step("RotateRight")
+        elif relative_yaw < 0:
+            controller.step("RotateLeft")
 
-                # update pose and score
-                robot_x, robot_z = x_n, z_n
-                robot_yaw       = target_y
-                S0              = S_n
+        print(f"Rotated to target yaw: {target_yaw:.2f}")
 
-                # refresh navKnowledge at new pose
-                envKnowledge = visionBranch(yolo_model, envKnowledge, controller)
-                navKnowledge = add_goal_similarity(envKnowledge, goal_phrase,
-                                                infotaxis_agent.prob_map,
-                                                x_points, z_points,
-                                                nav_mode=nav_mode)
-            else:
-                # next step would increase entropy → stop and re-plan
-                # teleport back to original yaw if needed
-                controller.step("Teleport",
-                                position=dict(x=robot_x,y=agent_meta['position']['y'],z=robot_z),
-                                rotation=dict(x=0,y=robot_yaw,z=0))
-                break
+        try:
+            # Move towards the target position
+            controller.step(
+                action="Teleport",
+                position=dict(x=pos[0], y=pos[1], z=pos[2]),
+                rotation=dict(x=0, y=target_yaw, z=0)  # explicitly set rotation
+            )
+            print(f"Teleported to: x={pos[0]:.2f}, y={pos[1]:.2f}, z={pos[2]:.2f}")
+            
+            step_count += 1
+
+        except: 
+            print("Teleoportation error")
+            break
 
         # Exploration step: update env knowledge
         probMap = infotaxis_agent.prob_map  # The agent's final distribution
@@ -806,35 +825,82 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
                 
         # 1) Infotaxis map
         H, W = len(z_points), len(x_points)
-        infomap_raw   = probMap / (probMap.max() + 1e-8)
-        # upsample
-        infomap_up    = cv2.resize(infomap_raw, (W*2, H*2), interpolation=cv2.INTER_LINEAR)
+        infomap_raw = probMap / (probMap.max() + 1e-8)
+        # upsample to (width, height)
+        infomap_up = cv2.resize(infomap_raw, (W*2, H*2), interpolation=cv2.INTER_LINEAR)
+        # flip vertically so that array[0,:] (z_min) is at the bottom
+        infomap_up = cv2.flip(infomap_up, 0)
         infomap_img   = (infomap_up * 255).astype(np.uint8)
         infomap_color = cv2.applyColorMap(infomap_img, cv2.COLORMAP_JET)
 
         # 2) Vision map (langSim)
-        vision_map    = generate_heatmap(navKnowledge, x_points, z_points,
-                                        weight_key='langSim', sigma=1, upsample=2)
-        vision_img    = (vision_map * 255).astype(np.uint8)
-        vision_color  = cv2.applyColorMap(vision_img, cv2.COLORMAP_HOT)
+        H, W = len(z_points), len(x_points)   # same dims
+        vision_raw = generate_heatmap(navKnowledge, x_points, z_points,
+                                      weight_key='langSim', sigma=1)
+        vision_up  = cv2.resize(vision_raw,  (W*2, H*2), interpolation=cv2.INTER_LINEAR)
+        vision_up  = cv2.flip(vision_up, 0)
+        vision_img = (vision_up * 255).astype(np.uint8)
+        vision_color = cv2.applyColorMap(vision_img, cv2.COLORMAP_HOT)
 
         # 3) goalSim map
-        goal_map      = generate_heatmap(navKnowledge, x_points, z_points,
-                                        weight_key='goalSim', sigma=1, upsample=2)
-        goal_img      = (goal_map * 255).astype(np.uint8)
-        goal_color    = cv2.applyColorMap(goal_img, cv2.COLORMAP_PLASMA)
+        goal_raw = generate_heatmap(navKnowledge, x_points, z_points,
+                                    weight_key='goalSim', sigma=1)
+        goal_up  = cv2.resize(goal_raw,   (W*2, H*2), interpolation=cv2.INTER_LINEAR)
+        goal_up  = cv2.flip(goal_up, 0)
+        goal_img = (goal_up * 255).astype(np.uint8)
+        goal_color  = cv2.applyColorMap(goal_img, cv2.COLORMAP_PLASMA)
 
-        # 4) concatenate side-by-side
-        combined = np.concatenate([infomap_color, vision_color, goal_color], axis=1)
+        # Normalize the goal map to [0, 1]
+        goal_dist = goal_raw / (goal_raw.sum() + 1e-12)
 
-        # 5) save high-res combined map
-        out_fname = f"save/maps_all_{step_count}.png"
-        cv2.imwrite(out_fname, combined)
-        print(f"Saved combined infotaxis|vision|goalSim map (2× res) as {out_fname}")
+        # Compute entropy of the goal distribution
+        H_goal = entropy(goal_dist.flatten())   # bits; drop base arg for nats
+        print(f"Goal entropy: {H_goal:.4f} bits\n")       
+            
+        # Convert to RGB
+        inf_rgb  = cv2.cvtColor(infomap_color, cv2.COLOR_BGR2RGB)
+        vis_rgb  = cv2.cvtColor(vision_color,  cv2.COLOR_BGR2RGB)
+        goal_rgb = cv2.cvtColor(goal_color,    cv2.COLOR_BGR2RGB)
 
-        # print(f"scipyRobot x: {robot_x}, Robot z: {robot_z}")
-        # cv2.imshow("AI2-THOR", controller.last_event.cv2img)
-        # cv2.waitKey(int(1000))
+        # Figure setup
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5), sharex=True, sharey=True)
+        maps   = [inf_rgb, vis_rgb, goal_rgb]
+        titles = ['Infotaxis', 'Vision (langSim)', 'GoalSim']
+
+        # Compute bounds
+        xmin, xmax = min(x_points), max(x_points)
+        zmin, zmax = min(z_points), max(z_points)
+        # Reverse the z‐extent so that zmax is at the top
+        extent = [xmin, xmax, zmax, zmin]
+
+        # Integer tick marks
+        xticks = list(range(math.floor(xmin), math.ceil(xmax) + 1))
+        zticks = list(range(math.floor(zmin), math.ceil(zmax) + 1))
+
+        for ax, img, title in zip(axes, maps, titles):
+            # Put row 0 at the top, and use the reversed z‐extent
+            ax.imshow(img, origin='upper', extent=extent)
+            ax.set_title(title)
+            ax.set_xlabel('X')
+            ax.set_ylabel('Z')
+            ax.set_xticks(xticks)
+            ax.set_yticks(zticks)
+            ax.grid(True, linestyle='--', linewidth=0.5)
+            # Data limits match the extent (no further inversion)
+            ax.set_xlim(xmin, xmax)
+            ax.set_ylim(zmax, zmin)
+
+        plt.tight_layout()
+        out_fname = f"save/maps_all_{step_count}_x_{robot_x:.2f}_z_{robot_z:.2f}.png"
+        fig.savefig(out_fname, dpi=150)
+        plt.close(fig)
+
+        print(f"Saved combined map (aligned to trajectory) as {out_fname}")
+
+        # Save egocentric RGB frame
+        frame_bgr = controller.last_event.cv2img  # AI2-THOR gives frame in BGR format
+        cv2.imwrite(f"save/frame_{step_count:03d}_x_{robot_x:.2f}_z_{robot_z:.2f}.png", frame_bgr)
+
         
         time.sleep(0.1)
 
@@ -842,7 +908,8 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
 # MAIN FUNCTION
 # ==========================
 def main():
-    mode = input("Select navigation mode (f: fusion, v: vision only, o: olfaction only): ").strip().lower()
+    # mode = input("Select navigation mode (f: fusion, v: vision only, o: olfaction only): ").strip().lower()
+    mode = 'f'
     while mode not in ['f', 'v', 'o']:
         mode = input("Invalid input. Please enter 'f', 'v', or 'o': ").strip().lower()
 
@@ -904,7 +971,7 @@ def main():
     target_items = ["Microwave"]
     
     # goal = "rotten smell"
-    # target_items = ["GarbageCan"]
+    # target_items = ["Fridge"]
     
     objects = controller.last_event.metadata["objects"]
     sourcePos = get_objects_centers(objects, target_items)
@@ -940,7 +1007,7 @@ def main():
         x, y, z = sourcePos[0]
         z += 0.5
         sourcePos = np.array([[x, y, z]])
-    elif target_items == ['GarbageCan']:
+    elif target_items == ['Fridge']:
         x, y, z = sourcePos[0]
         x += 0.25
         sourcePos = np.array([[x, y, z]])
@@ -1030,7 +1097,8 @@ def main():
         save_path="save/itemDF.csv",
         max_time=200,
         goal_phrase=goal,
-        dist_threshold=0.5,
+        # dist_threshold=1.2,
+        dist_threshold=0.55,
         stepMagnitude=stepMagnitude,
         infotaxis_agent=infotaxis_agent,
         x_points=x_points,

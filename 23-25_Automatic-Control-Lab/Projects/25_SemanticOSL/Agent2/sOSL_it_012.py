@@ -16,7 +16,8 @@ from sentence_transformers import SentenceTransformer, util
 
 from scipy.ndimage import gaussian_filter
 
-    
+import matplotlib.pyplot as plt
+
 # ==========================
 # HELPER FUNCTION: Compress Image
 # ==========================
@@ -650,6 +651,7 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
         # Step 2: update belief
         infotaxis_agent.update_belief(current_odor_concentration, robot_x, robot_z)
         current_ent = entropy(infotaxis_agent.prob_map)
+        print(f"[Step {step_count}] Infotaxis Entropy: {current_ent:.4f}")
         entropies.append(current_ent)
 
         # ========================== #
@@ -770,40 +772,77 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
                 
         # 1) Infotaxis map
         H, W = len(z_points), len(x_points)
-        infomap_raw   = probMap / (probMap.max() + 1e-8)
-        # upsample
-        infomap_up    = cv2.resize(infomap_raw, (W*2, H*2), interpolation=cv2.INTER_LINEAR)
+        infomap_raw = probMap / (probMap.max() + 1e-8)
+        # upsample to (width, height)
+        infomap_up = cv2.resize(infomap_raw, (W*2, H*2), interpolation=cv2.INTER_LINEAR)
+        # flip vertically so that array[0,:] (z_min) is at the bottom
+        infomap_up = cv2.flip(infomap_up, 0)
         infomap_img   = (infomap_up * 255).astype(np.uint8)
         infomap_color = cv2.applyColorMap(infomap_img, cv2.COLORMAP_JET)
 
         # 2) Vision map (langSim)
-        vision_map    = generate_heatmap(navKnowledge, x_points, z_points,
-                                        weight_key='langSim', sigma=1, upsample=2)
-        vision_img    = (vision_map * 255).astype(np.uint8)
-        vision_color  = cv2.applyColorMap(vision_img, cv2.COLORMAP_HOT)
+        H, W = len(z_points), len(x_points)   # same dims
+        vision_raw = generate_heatmap(navKnowledge, x_points, z_points,
+                                      weight_key='langSim', sigma=1)
+        vision_up  = cv2.resize(vision_raw,  (W*2, H*2), interpolation=cv2.INTER_LINEAR)
+        vision_up  = cv2.flip(vision_up, 0)
+        vision_img = (vision_up * 255).astype(np.uint8)
+        vision_color = cv2.applyColorMap(vision_img, cv2.COLORMAP_HOT)
 
         # 3) goalSim map
-        goal_map      = generate_heatmap(navKnowledge, x_points, z_points,
-                                        weight_key='goalSim', sigma=1, upsample=2)
-        goal_img      = (goal_map * 255).astype(np.uint8)
-        goal_color    = cv2.applyColorMap(goal_img, cv2.COLORMAP_PLASMA)
+        goal_raw = generate_heatmap(navKnowledge, x_points, z_points,
+                                    weight_key='goalSim', sigma=1)
+        goal_up  = cv2.resize(goal_raw,   (W*2, H*2), interpolation=cv2.INTER_LINEAR)
+        goal_up  = cv2.flip(goal_up, 0)
+        goal_img = (goal_up * 255).astype(np.uint8)
+        goal_color  = cv2.applyColorMap(goal_img, cv2.COLORMAP_PLASMA)
 
-        # 4) concatenate side-by-side
-        combined = np.concatenate([infomap_color, vision_color, goal_color], axis=1)
+                        
+            
+        # Convert to RGB
+        inf_rgb  = cv2.cvtColor(infomap_color, cv2.COLOR_BGR2RGB)
+        vis_rgb  = cv2.cvtColor(vision_color,  cv2.COLOR_BGR2RGB)
+        goal_rgb = cv2.cvtColor(goal_color,    cv2.COLOR_BGR2RGB)
 
-        # 5) save high-res combined map
+        # Figure setup
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5), sharex=True, sharey=True)
+        maps   = [inf_rgb, vis_rgb, goal_rgb]
+        titles = ['Infotaxis', 'Vision (langSim)', 'GoalSim']
+
+        # Compute bounds
+        xmin, xmax = min(x_points), max(x_points)
+        zmin, zmax = min(z_points), max(z_points)
+        # Reverse the z‐extent so that zmax is at the top
+        extent = [xmin, xmax, zmax, zmin]
+
+        # Integer tick marks
+        xticks = list(range(math.floor(xmin), math.ceil(xmax) + 1))
+        zticks = list(range(math.floor(zmin), math.ceil(zmax) + 1))
+
+        for ax, img, title in zip(axes, maps, titles):
+            # Put row 0 at the top, and use the reversed z‐extent
+            ax.imshow(img, origin='upper', extent=extent)
+            ax.set_title(title)
+            ax.set_xlabel('X')
+            ax.set_ylabel('Z')
+            ax.set_xticks(xticks)
+            ax.set_yticks(zticks)
+            ax.grid(True, linestyle='--', linewidth=0.5)
+            # Data limits match the extent (no further inversion)
+            ax.set_xlim(xmin, xmax)
+            ax.set_ylim(zmax, zmin)
+
+        plt.tight_layout()
         out_fname = f"save/maps_all_{step_count}_x_{robot_x:.2f}_z_{robot_z:.2f}.png"
-        cv2.imwrite(out_fname, combined)
-        print(f"Saved combined infotaxis|vision|goalSim map as {out_fname}")
-        
+        fig.savefig(out_fname, dpi=150)
+        plt.close(fig)
+
+        print(f"Saved combined map (aligned to trajectory) as {out_fname}")
+
         # Save egocentric RGB frame
         frame_bgr = controller.last_event.cv2img  # AI2-THOR gives frame in BGR format
         cv2.imwrite(f"save/frame_{step_count:03d}_x_{robot_x:.2f}_z_{robot_z:.2f}.png", frame_bgr)
 
-
-        # print(f"scipyRobot x: {robot_x}, Robot z: {robot_z}")
-        # cv2.imshow("AI2-THOR", controller.last_event.cv2img)
-        # cv2.waitKey(int(1000))
         
         time.sleep(0.1)
 
@@ -811,8 +850,8 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
 # MAIN FUNCTION
 # ==========================
 def main():
-    mode = input("Select navigation mode (f: fusion, v: vision only, o: olfaction only): ").strip().lower()
-    # mode = 'f'
+    # mode = input("Select navigation mode (f: fusion, v: vision only, o: olfaction only): ").strip().lower()
+    mode = 'f'
     while mode not in ['f', 'v', 'o']:
         mode = input("Invalid input. Please enter 'f', 'v', or 'o': ").strip().lower()
 
@@ -870,11 +909,11 @@ def main():
     print(f'Z bounds: {z_min}, {z_max}')
 
     # (1) Retrieve the odor source from iTHOR objects
-    # goal = "smoke"
-    # target_items = ["Microwave"]
+    goal = "smoke"
+    target_items = ["Microwave"]
     
-    goal = "rotten smell"
-    target_items = ["GarbageCan"]
+    # goal = "rotten smell"
+    # target_items = ["Fridge"]
     
     objects = controller.last_event.metadata["objects"]
     sourcePos = get_objects_centers(objects, target_items)
@@ -910,23 +949,23 @@ def main():
         x, y, z = sourcePos[0]
         z += 0.5
         sourcePos = np.array([[x, y, z]])
-    elif target_items == ['GarbageCan']:
+    elif target_items == ['Fridge']:
         x, y, z = sourcePos[0]
         x += 0.25
         sourcePos = np.array([[x, y, z]])
         
 
     # # Microwave Starting position 1
-    # controller.step(
-    #     action="Teleport",
-    #     position=dict(x=1.5, y=0.9, z=1.5),
-    #     rotation=dict(x=0, y=180, z=0)
-    # )
+    controller.step(
+        action="Teleport",
+        position=dict(x=1.5, y=0.9, z=1.5),
+        rotation=dict(x=0, y=180, z=0)
+    )
 
-    # controller.step(
-    #     "MoveAhead",
-    #     moveMagnitude=0.01
-    # )
+    controller.step(
+        "MoveAhead",
+        moveMagnitude=0.01
+    )
     
     # # Microwave Starting position 2
     # controller.step(
@@ -954,16 +993,16 @@ def main():
     
     
     # Garbage Start Pos 1: facing back to the garbage bin
-    controller.step(
-        action="Teleport",
-        position=dict(x=1.5, y=0.9, z=2),
-        rotation=dict(x=0, y=90, z=0),
-    )
+    # controller.step(
+    #     action="Teleport",
+    #     position=dict(x=1.5, y=0.9, z=2),
+    #     rotation=dict(x=0, y=90, z=0),
+    # )
 
-    controller.step(
-        "MoveAhead",
-        moveMagnitude=0.01
-    )
+    # controller.step(
+    #     "MoveAhead",
+    #     moveMagnitude=0.01
+    # )
 
     # # Garbage Start Pos 2: upper left corner
     # controller.step(
@@ -1001,7 +1040,7 @@ def main():
         max_time=200,
         goal_phrase=goal,
         # dist_threshold=1.2,
-        dist_threshold=0.5,
+        dist_threshold=0.55,
         stepMagnitude=stepMagnitude,
         infotaxis_agent=infotaxis_agent,
         x_points=x_points,
