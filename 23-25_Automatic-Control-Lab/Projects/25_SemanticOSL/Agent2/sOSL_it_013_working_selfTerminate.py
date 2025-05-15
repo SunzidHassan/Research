@@ -467,6 +467,12 @@ def generate_heatmap(df, x_points, z_points, weight_key='goalSim', sigma=1.0, up
         )
     return heatmap
 
+def map_entropy(raw):
+    p = raw.flatten()
+    p = p / (p.sum() + 1e-12)      # normalize
+    p = p[p > 0]                  # drop zeros to avoid log(0)
+    return -np.sum(p * np.log(p))
+
 # ==========================
 # Nav Functions
 # ==========================
@@ -554,7 +560,7 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
     start_time = time.time()
     entropies = []
     logDF = pd.DataFrame(columns=["step", "robot_x", "robot_z", "robot_yaw", 
-                                  "target_object", "concentration"])
+                                  "target_object", "concentration", "gt_distance_from_source"])
     # Retrieve robot's current pose.
     agent_meta = controller.last_event.metadata["agent"]
     robot_x = agent_meta["position"].get("x", None)
@@ -563,14 +569,15 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
 
     print("Fusion control active. Executing actions until timeout or target reached.")
     
-    H_goal = 1
     # compute maximum possible entropy
     num_cells = len(z_points)*len(x_points)
     H_max     = np.log2(num_cells)
     print(f"Max entropy: {H_max:.2f} bits")
 
+    fused_entropy = H_max
+
     # choose a fraction—for instance 0.2 → we stop when the distribution is ≤20% of max entropy
-    entropy_frac = 0.97
+    entropy_frac = 0.6
     entropy_threshold = H_max * entropy_frac   # ~8.92*0.2 ≈ 1.8 bits
     print(f"Entropy threshold: {entropy_threshold:.2f} bits")
     # choose a fraction—for instance 0.2 → we stop when the distribution is ≤20% of max entropy
@@ -632,12 +639,12 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
         #     logDF.to_csv("save/trajectory_log.csv", index=False)
         #     break
         # 6b) goal‐map entropy based “direct teleport”  
-        if H_goal > entropy_threshold:
+        if fused_entropy < entropy_threshold:
             # pick the top object from navKnowledge
             obj_row    = navKnowledge.iloc[0]
             target_obj = obj_row["objectType"]
             target_pos = parse_position_string(obj_row["Position"])
-            print(f"High entropy ({H_goal:.2f} bits) > threshold; teleporting to top object: {target_obj}")
+            print(f"High entropy ({fused_entropy:.2f} bits) > threshold; teleporting to top object: {target_obj}")
 
             # find the nearest reachable node to that object
             target_node, _ = find_nearest_node(graph, target_pos)
@@ -665,7 +672,8 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
                 "robot_z":     pos[2],
                 "robot_yaw":   target_yaw,
                 "target_object": target_obj,
-                "concentration": current_odor_concentration
+                "concentration": current_odor_concentration,
+                "gt_distance_from_source": min_distance
             }])
             logDF = pd.concat([logDF, new_row], ignore_index=True)
 
@@ -716,7 +724,8 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
             "robot_x": robot_x,
             "robot_z": robot_z,
             "robot_yaw": robot_yaw,
-            "concentration": current_odor_concentration
+            "concentration": current_odor_concentration,
+            "gt_distance_from_source": min_distance
         }
         logDF = pd.concat([logDF, pd.DataFrame([log_entry], columns=logDF.columns)], 
                           ignore_index=True)
@@ -833,6 +842,7 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
         infomap_img   = (infomap_up * 255).astype(np.uint8)
         infomap_color = cv2.applyColorMap(infomap_img, cv2.COLORMAP_JET)
 
+
         # 2) Vision map (langSim)
         H, W = len(z_points), len(x_points)   # same dims
         vision_raw = generate_heatmap(navKnowledge, x_points, z_points,
@@ -854,23 +864,49 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
         goal_dist = goal_raw / (goal_raw.sum() + 1e-12)
 
         # Compute entropy of the goal distribution
-        H_goal = entropy(goal_dist.flatten())   # bits; drop base arg for nats
-        print(f"Goal entropy: {H_goal:.4f} bits\n")       
+        # H_goal = entropy(goal_dist.flatten())   # bits; drop base arg for nats
+
+        H_inf  = map_entropy(infomap_raw)    # infotaxis entropy
+        H_vis  = map_entropy(vision_raw)     # vision entropy
+        H_goal = map_entropy(goal_raw)       # goalSim entropy
+        
+        H_inf_weight = 0.8
+        H_vis_weight = 0.2
+
+        fused_entropy = H_inf * H_inf_weight + H_vis * H_vis_weight
+        print(f"Fused entropy: {fused_entropy:.4f} bits\n")       
             
+
+        # … after you have infomap_raw, vision_raw, goal_raw …
+
+        H_inf  = map_entropy(infomap_raw)    # infotaxis entropy
+        H_vis  = map_entropy(vision_raw)     # vision entropy
+        H_goal = map_entropy(goal_raw)       # goalSim entropy
+
+        # now when you build titles:
+        titles = [
+            f'Infotaxis (H={H_inf:.2f})',
+            f'Vision (langSim) (H={H_vis:.2f})',
+            f'GoalSim (H={H_goal:.2f})'
+        ]
+
         # Convert to RGB
         inf_rgb  = cv2.cvtColor(infomap_color, cv2.COLOR_BGR2RGB)
-        vis_rgb  = cv2.cvtColor(vision_color,  cv2.COLOR_BGR2RGB)
-        goal_rgb = cv2.cvtColor(goal_color,    cv2.COLOR_BGR2RGB)
+        vis_rgb  = cv2.cvtColor(vision_color, cv2.COLOR_BGR2RGB)
+        goal_rgb = cv2.cvtColor(goal_color, cv2.COLOR_BGR2RGB)
 
         # Figure setup
         fig, axes = plt.subplots(1, 3, figsize=(15, 5), sharex=True, sharey=True)
         maps   = [inf_rgb, vis_rgb, goal_rgb]
-        titles = ['Infotaxis', 'Vision (langSim)', 'GoalSim']
+        titles = [
+            f'Infotaxis (H={H_inf:.2f})', 
+            f'Vision (langSim) (H={H_vis:.2f})', 
+            f'GoalSim (H={H_goal:.2f})'
+        ]
 
         # Compute bounds
         xmin, xmax = min(x_points), max(x_points)
         zmin, zmax = min(z_points), max(z_points)
-        # Reverse the z‐extent so that zmax is at the top
         extent = [xmin, xmax, zmax, zmin]
 
         # Integer tick marks
@@ -878,7 +914,6 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
         zticks = list(range(math.floor(zmin), math.ceil(zmax) + 1))
 
         for ax, img, title in zip(axes, maps, titles):
-            # Put row 0 at the top, and use the reversed z‐extent
             ax.imshow(img, origin='upper', extent=extent)
             ax.set_title(title)
             ax.set_xlabel('X')
@@ -886,7 +921,6 @@ def fusion_control(controller, itemDF, yolo_model, source_position,
             ax.set_xticks(xticks)
             ax.set_yticks(zticks)
             ax.grid(True, linestyle='--', linewidth=0.5)
-            # Data limits match the extent (no further inversion)
             ax.set_xlim(xmin, xmax)
             ax.set_ylim(zmax, zmin)
 
