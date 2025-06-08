@@ -1,0 +1,306 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" version="27.1.4">
+  <diagram name="Page-1" id="aRVxCPhWlqjo4QxrCRw8">
+    <mxGraphModel dx="2037" dy="1179" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-80" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="12" y="731" width="830" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-126" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="692" y="734" width="146" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="LuoIXvWUnJ8CGdqQmeQi-2" target="LuoIXvWUnJ8CGdqQmeQi-4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-2" value="Object bounding&lt;div&gt;&amp;nbsp;box attributes&lt;div&gt;(bx, by, bw, bh)&lt;/div&gt;&lt;/div&gt;" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" parent="1" vertex="1">
+          <mxGeometry x="297" y="204" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="LuoIXvWUnJ8CGdqQmeQi-3" target="LuoIXvWUnJ8CGdqQmeQi-5" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-3" value="Get the the 90th percentile depth of the derived object&lt;div&gt;bounding box depthmap.&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="318" y="90" width="120" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="LuoIXvWUnJ8CGdqQmeQi-4" target="LuoIXvWUnJ8CGdqQmeQi-6" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-4" value="Find object viewing angle" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="479" y="204" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="LuoIXvWUnJ8CGdqQmeQi-5" target="LuoIXvWUnJ8CGdqQmeQi-15" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="820" y="119" />
+              <mxPoint x="820" y="328" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-5" value="Object&#39;s 3D displacement&amp;nbsp;&lt;div&gt;from the&lt;/div&gt;&lt;div&gt;&amp;nbsp;robot-frame.&lt;/div&gt;" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" parent="1" vertex="1">
+          <mxGeometry x="677" y="90" width="120" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="LuoIXvWUnJ8CGdqQmeQi-6" target="LuoIXvWUnJ8CGdqQmeQi-15" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="809" y="234" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-6" value="Horizontal and Verticle viewing angles." style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" parent="1" vertex="1">
+          <mxGeometry x="626" y="204" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-7" value="Object&#39;s&lt;div&gt;&amp;nbsp;3D coordinates&lt;/div&gt;&lt;div&gt;&amp;nbsp;in local-frame.&lt;/div&gt;" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" parent="1" vertex="1">
+          <mxGeometry x="542" y="298" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-28" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="LuoIXvWUnJ8CGdqQmeQi-8" target="LuoIXvWUnJ8CGdqQmeQi-11" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="309" y="364" />
+              <mxPoint x="309" y="364" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-8" value="Object&#39;s&lt;div&gt;&amp;nbsp;3D coordinates&lt;/div&gt;&lt;div&gt;&amp;nbsp;in global-frame.&lt;/div&gt;" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" parent="1" vertex="1">
+          <mxGeometry x="260" y="298" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-9" value="Goal-independent&lt;div&gt;Visual Knowledge&lt;/div&gt;&lt;div&gt;of the Environment&lt;/div&gt;" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" parent="1" vertex="1">
+          <mxGeometry x="366" y="399.5" width="150" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-37" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="LuoIXvWUnJ8CGdqQmeQi-11" target="LuoIXvWUnJ8CGdqQmeQi-9" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-11" value="Recursive Update" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="274" y="402" width="70" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-12" value="Adjusting for robot position-orientation." style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="402" y="298" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-33" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.101;entryY=0.52;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" source="LuoIXvWUnJ8CGdqQmeQi-13" target="LuoIXvWUnJ8CGdqQmeQi-14" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-13" value="Sentence Transformer cosine similarity of the object and goal embeddings." style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="540" y="387" width="120" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-14" value="Visual Source&lt;div&gt;&amp;nbsp;Probability Distribution&lt;/div&gt;" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" parent="1" vertex="1">
+          <mxGeometry x="681" y="386" width="119" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-25" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="LuoIXvWUnJ8CGdqQmeQi-15" target="LuoIXvWUnJ8CGdqQmeQi-7" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-15" value="Projecting the&amp;nbsp; to 3D space from robot&#39;s camera" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="673" y="298" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="LuoIXvWUnJ8CGdqQmeQi-16" target="LuoIXvWUnJ8CGdqQmeQi-3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-16" value="Depth Image" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" parent="1" vertex="1">
+          <mxGeometry x="144" y="105" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="LuoIXvWUnJ8CGdqQmeQi-7" target="LuoIXvWUnJ8CGdqQmeQi-12" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="549" y="328" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-27" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="LuoIXvWUnJ8CGdqQmeQi-12" target="LuoIXvWUnJ8CGdqQmeQi-8" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="LuoIXvWUnJ8CGdqQmeQi-9" target="LuoIXvWUnJ8CGdqQmeQi-13" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-38" value="RGB Image" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" parent="1" vertex="1">
+          <mxGeometry x="40" y="204" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-39" value="YOLO Object Detection" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="160" y="204" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-40" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.467;entryY=1.002;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="368" y="204" as="sourcePoint" />
+            <mxPoint x="372.03999999999996" y="180.18" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="372" y="204" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="LuoIXvWUnJ8CGdqQmeQi-42" value="Image Angular&lt;div&gt;Resolution&lt;/div&gt;" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" parent="1" vertex="1">
+          <mxGeometry x="110" y="410" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-81" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="22" y="813" width="410" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-82" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="3p64uqaIbpZhjcEpvLJC-113" target="3p64uqaIbpZhjcEpvLJC-84">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="159.99047619047622" y="961.0285714285715" as="sourcePoint" />
+            <Array as="points">
+              <mxPoint x="160" y="961" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-83" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="3p64uqaIbpZhjcEpvLJC-84" target="3p64uqaIbpZhjcEpvLJC-88">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-84" value="Camera&lt;div&gt;Angular Resolution (degrees per pixel)&lt;/div&gt;" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="183" y="931" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-116" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="3p64uqaIbpZhjcEpvLJC-86" target="3p64uqaIbpZhjcEpvLJC-88">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="414" y="865" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-86" value="Object-type and&amp;nbsp;&lt;div&gt;Bounding-&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;box&lt;/span&gt;&lt;/div&gt;" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="253" y="835" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-87" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=0.987;exitY=0.438;exitDx=0;exitDy=0;exitPerimeter=0;" edge="1" parent="1" source="3p64uqaIbpZhjcEpvLJC-114" target="3p64uqaIbpZhjcEpvLJC-90">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="162.99047619047622" y="770.0285714285715" as="sourcePoint" />
+            <Array as="points">
+              <mxPoint x="148" y="770" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-88" value="Object&#39;s Verticle&lt;div&gt;&amp;nbsp;and Horizontal&lt;div&gt;&amp;nbsp;Viewing Angles.&lt;/div&gt;&lt;/div&gt;" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="344" y="931" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-89" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="3p64uqaIbpZhjcEpvLJC-90" target="3p64uqaIbpZhjcEpvLJC-95">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-90" value="Object Distance&lt;div&gt;from the Agent&lt;/div&gt;" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="211" y="740" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-91" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" target="3p64uqaIbpZhjcEpvLJC-93">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="112.99047619047622" y="866.0285714285715" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-92" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="3p64uqaIbpZhjcEpvLJC-93" target="3p64uqaIbpZhjcEpvLJC-86">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-93" value="YOLO Object Detection" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="147" y="836" width="85" height="59" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-94" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="3p64uqaIbpZhjcEpvLJC-95" target="3p64uqaIbpZhjcEpvLJC-98">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-95" value="Object&#39;s&lt;div&gt;&amp;nbsp;3D Coordinates&lt;/div&gt;&lt;div&gt;&amp;nbsp;in Local-frame.&lt;/div&gt;" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="352" y="740" width="170" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-96" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.405;entryY=0.963;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="446" y="822" />
+              <mxPoint x="446" y="822" />
+            </Array>
+            <mxPoint x="446.030303030303" y="930.9999999999998" as="sourcePoint" />
+            <mxPoint x="445.8499999999999" y="797.78" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-97" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.452;exitY=0.979;exitDx=0;exitDy=0;entryX=0.453;entryY=0.019;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="602.664" y="798.74" as="sourcePoint" />
+            <mxPoint x="575.3599999999999" y="842.5509999999999" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="575" y="799" />
+              <mxPoint x="575" y="843" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-98" value="Object&#39;s&lt;div&gt;&amp;nbsp;3D Coordinates&lt;/div&gt;&lt;div&gt;&amp;nbsp;in Global-frame.&lt;/div&gt;" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="530" y="740" width="132" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-100" value="Object Detection" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;rotation=0;" vertex="1" parent="1">
+          <mxGeometry x="24" y="815" width="111.5" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-101" value="Visual&lt;div&gt;Cognition&lt;/div&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;rotation=0;fontStyle=1;fontSize=15;" vertex="1" parent="1">
+          <mxGeometry x="1" y="749" width="106" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-102" value="Recursive Update" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="508" y="842" width="120" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-103" value="1) Grounding Objects to the&lt;br&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;2D Search Area Map, and&amp;nbsp;&lt;/span&gt;&lt;div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;2) Taking&amp;nbsp;&lt;/span&gt;Sentence Transformer Cosine Similarity between&amp;nbsp;&lt;/div&gt;&lt;div&gt;Goal&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;and Object Embedings&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="642" y="891" width="184" height="99" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-104" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.738;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="622" y="951" />
+              <mxPoint x="622" y="951" />
+            </Array>
+            <mxPoint x="617.169108910891" y="951.8960000000002" as="sourcePoint" />
+            <mxPoint x="641.9999999999998" y="951.8960000000002" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-105" value="Goal-independent&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&amp;nbsp;Semantic&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Representation (Knowledge)&lt;/span&gt;&lt;div&gt;of the Environment&lt;/div&gt;&lt;/div&gt;" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="492" y="891" width="140" height="101" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-106" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.516;entryY=-0.003;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="574" y="871" />
+              <mxPoint x="574" y="871" />
+            </Array>
+            <mxPoint x="574.24" y="871" as="sourcePoint" />
+            <mxPoint x="574.24" y="890.6970000000001" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-107" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="3p64uqaIbpZhjcEpvLJC-103">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="742" y="867" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="742" y="881" />
+              <mxPoint x="742" y="881" />
+            </Array>
+            <mxPoint x="742.0285714285715" y="877" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-110" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1" target="3p64uqaIbpZhjcEpvLJC-103" source="3p64uqaIbpZhjcEpvLJC-115">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="734" y="989" as="sourcePoint" />
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-111" value="RGB Image" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="34" y="845" width="82" height="41" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-112" value="Goal-dependent&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Visual Source&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Probability Distribution&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="662" y="806" width="160" height="61" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-113" value="Camera Parameters:&lt;div&gt;&amp;nbsp;image width-height, horizontal and verticle FOV&lt;br&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="28" y="917" width="132" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-114" value="Depth Image" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="102" y="747" width="86" height="47" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-115" value="Goal: Target Odor Type" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="661.75" y="1011" width="144.5" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-118" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.08;entryY=1.01;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="290" y="835" as="sourcePoint" />
+            <mxPoint x="289.5999999999999" y="800.5999999999999" as="targetPoint" />
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-119" value="Agent&#39;s 3D&lt;div&gt;Coordinates&lt;div&gt;and Orientation&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="539.75" y="670" width="120" height="47" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-122" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.527;entryY=0.021;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="3p64uqaIbpZhjcEpvLJC-119" target="3p64uqaIbpZhjcEpvLJC-98">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-124" value="Input" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="704" y="742.75" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-125" value="Output" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="704" y="765.25" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-129" value="Process" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="776" y="742.75" width="50" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="3p64uqaIbpZhjcEpvLJC-130" value="Result" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;size=7.999999999999773;" vertex="1" parent="1">
+          <mxGeometry x="774" y="765.25" width="54" height="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
