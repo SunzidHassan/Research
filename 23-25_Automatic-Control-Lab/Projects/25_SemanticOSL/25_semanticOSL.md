@@ -1,3 +1,22 @@
+
+$p_v(x)$
+
+$p(x)$
+
+$L_o(x)$
+
+$K$
+
+$H(s|a)$
+
+$\boldsymbol{x}^a$
+
+$\boldsymbol{v}$
+
+$\boldsymbol{x}^{s*}$
+
+-----------------------
+
 # LLM-OSL
 ## Table of Contents
 
